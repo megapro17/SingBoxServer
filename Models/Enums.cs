@@ -3,13 +3,13 @@ namespace SingBoxServer.Models;
 public enum ServerType
 {
     Local,
-    Remote,
-    LocalV2ray
+    Remote
 }
 
 public enum ServerFormat
 {
     SingBox,
     Vless,
-    Clash
+    Clash,
+    V2ray
 }

@@ -13,12 +13,23 @@ public class SubscriptionLoader(HttpClient httpClient, ILogger<SubscriptionLoade
     {
         return server.Type switch
         {
-            ServerType.Local => await ReadLocalFileAsync(server, ct),
+            ServerType.Local => await HandleLocalLoadAsync(server, ct),
             ServerType.Remote => await DownloadRemoteFileAsync(server, ct),
-            ServerType.LocalV2ray => await ReadLocalV2rayAsync(server, ct),
             _ => throw new NotSupportedException($"Тип {server.Type} не поддерживается")
         };
     }
+
+    private async Task<string> HandleLocalLoadAsync(ServerSource server, CancellationToken ct)
+    {
+        return server.Format switch
+        {
+            ServerFormat.SingBox => await ReadLocalFileAsync(server, ct),
+            ServerFormat.V2ray => await ReadLocalV2rayAsync(server, ct),
+            _ => throw new NotSupportedException($"Формат {server.Format} не поддерживается")
+        };
+    }
+
+
     private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
     {
         logger.LogLoadingLocalConfig(server.Path);
