@@ -11,7 +11,7 @@ public partial class SingBoxGenerator(ILogger<SingBoxGenerator> logger, ISubscri
 {
     public string Name => "sing-box";
 
-    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, Dictionary<string, ServerSource> servers, SingBoxTemplate template)
+    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, Dictionary<string, ServerSource>? servers, SingBoxTemplate template)
     {
         logger.LogInformation("Начинаем генерацию конфига");
         // Метод Generate превращается в "Оглавление"
@@ -24,7 +24,7 @@ public partial class SingBoxGenerator(ILogger<SingBoxGenerator> logger, ISubscri
     }
 
     // А вот тут уже кипит реальная работа
-    private async Task<List<OutboundNode>> BuildOutboundsAsync(UserProfile user, Dictionary<string, ServerSource> servers)
+    private async Task<List<OutboundNode>> BuildOutboundsAsync(UserProfile user, Dictionary<string, ServerSource>? servers)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(user.Outbounds);
@@ -37,7 +37,7 @@ public partial class SingBoxGenerator(ILogger<SingBoxGenerator> logger, ISubscri
         foreach (var outbound in user.Outbounds ?? [])
         {
             var server = user.Servers?.GetValueOrDefault(outbound)
-              ?? servers.GetValueOrDefault(outbound);
+              ?? servers?.GetValueOrDefault(outbound);
 
             if (server != null)
             {
