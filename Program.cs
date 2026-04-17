@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,21 +17,44 @@ var builder = WebApplication.CreateBuilder(args);
 // 2. Добавляем твои сервисы (тот самый метод расширения)
 builder.Services.AddApplicationServices();
 
-var app = builder.Build();
+// Предзагрузка настроек и шаблона
+var jsonOptions = new JsonSerializerOptions
+{
+    WriteIndented = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+};
+jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
 
-// Наша секретная соль для хэшей
-const string SALT = "JeYu=VS6xtCdz$Rs"; 
+var settingsInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\SingBoxServer\settings.json");
+var templateInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json");
+
+var settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, jsonOptions);
+var template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, jsonOptions);
+
+if (settings == null || template == null)
+    throw new Exception("Критическая ошибка: не удалось загрузить настройки или шаблон при старте.");
+
+// Регистрируем их как синглтоны, чтобы использовать в эндпоинтах
+builder.Services.AddSingleton(settings);
+builder.Services.AddSingleton(template);
+
+var app = builder.Build();
 
 // 3. Создаем тот самый маршрут
 app.MapGet("/configs/{hash}/{username}.json", async (
     string hash, 
     string username, 
+    UserSettings settings,
+    SingBoxTemplate template,
     [FromKeyedServices("sing-box")] IConfigGenerator<SingBoxTemplate> generator, // Достаем твой генератор прямо из DI!
     JsonSerializerOptions options,                                               // Настройки JSON из DI
     ILogger<Program> logger) =>
 {
     // --- ШАГ 1: Проверка хэша ---
-    var expectedHashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{SALT}"));
+    var salt = settings.BaseConfig.Salt;
+    var expectedHashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
     var expectedHash = Convert.ToHexString(expectedHashBytes).ToLower();
 
     // Сравниваем хэши (игнорируя регистр)
@@ -40,18 +64,8 @@ app.MapGet("/configs/{hash}/{username}.json", async (
         // Возвращаем 404 (NotFound), чтобы злоумышленник даже не понял, что такой юзер есть
         return Results.NotFound(); 
     }
-
-    // --- ШАГ 2: Чтение данных (в будущем можно вынести в кэш/Singleton) ---
-    var settingsInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\SingBoxServer\settings.json");
-    var templateInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json");
-
-    var settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, options);
-    var template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, options);
-
-    if (settings == null || template == null)
-        return Results.Problem("Ошибка чтения файлов конфигурации сервера.");
-
-    // --- ШАГ 3: Поиск пользователя ---
+    
+    // --- ШАГ 2: Поиск пользователя ---
     if (!settings.Users.TryGetValue(username, out var userProfile))
     {
         return Results.NotFound($"Пользователь {username} не найден.");
@@ -62,7 +76,7 @@ app.MapGet("/configs/{hash}/{username}.json", async (
         return Results.BadRequest($"У пользователя {username} нет серверов (outbounds).");
     }
 
-    // --- ШАГ 4: Генерация и ответ ---
+    // --- ШАГ 3: Генерация и ответ ---
     try
     {
         logger.LogInformation("Генерируем конфиг на лету для юзера {Username}", username);
