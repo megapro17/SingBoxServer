@@ -19,8 +19,50 @@ public partial class SingBoxGenerator(ILogger<SingBoxGenerator> logger, ISubscri
         {
             //Log = new JsonObject { ["level"] = "debug" },
             Outbounds = await BuildOutboundsAsync(user, servers),
-            //Route = BuildRoutes(settings)         // Вынесли логику
+            Route = ProcessNode(template.Route),
+            Dns = ProcessNode(template.Dns)
         };
+    }
+
+    private JsonNode? ProcessNode(JsonNode? node)
+    {
+        if (node == null) return null;
+
+        // Создаем глубокую копию, чтобы не менять исходный шаблон
+        var clone = node.DeepClone();
+        ReplacePlaceholders(clone);
+        return clone;
+    }
+
+    private void ReplacePlaceholders(JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            foreach (var prop in obj.ToArray())
+            {
+                if (prop.Value is JsonValue val && val.GetValueKind() == JsonValueKind.String)
+                {
+                    string currentVal = val.GetValue<string>();
+                    if (currentVal == Constants.ProxyOut)
+                        obj[prop.Key] = JsonValue.Create(Constants.ProxySelector);
+                    else if (currentVal == Constants.ProxyOutDirect)
+                        obj[prop.Key] = JsonValue.Create(Constants.ProxyDirect);
+                    else
+                        ReplacePlaceholders(prop.Value);
+                }
+                else
+                {
+                    ReplacePlaceholders(prop.Value);
+                }
+            }
+        }
+        else if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                ReplacePlaceholders(item);
+            }
+        }
     }
 
     // А вот тут уже кипит реальная работа

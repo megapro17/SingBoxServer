@@ -8,50 +8,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SingBoxServer.Extensions;
 using SingBoxServer.Models;
+using SingBoxServer.Services;
 using SingBoxServer.Services.ConfigGenerator;
-// Твои using'и для моделей и сервисов...
 
-// 1. Создаем строитель ВЕБ-ПРИЛОЖЕНИЯ (он внутри себя уже имеет ServiceCollection)
 var builder = WebApplication.CreateBuilder(args);
 
-// 2. Добавляем твои сервисы (тот самый метод расширения)
 builder.Services.AddApplicationServices();
-
-// Предзагрузка настроек и шаблона
-var jsonOptions = new JsonSerializerOptions
-{
-    WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-};
-jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
-
-var settingsInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\SingBoxServer\settings.json");
-var templateInput = await File.ReadAllTextAsync(@"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json");
-
-var settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, jsonOptions);
-var template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, jsonOptions);
-
-if (settings == null || template == null)
-    throw new Exception("Критическая ошибка: не удалось загрузить настройки или шаблон при старте.");
-
-// Регистрируем их как синглтоны, чтобы использовать в эндпоинтах
-builder.Services.AddSingleton(settings);
-builder.Services.AddSingleton(template);
 
 var app = builder.Build();
 
-// 3. Создаем тот самый маршрут
 app.MapGet("/configs/{hash}/{username}.json", async (
     string hash, 
     string username, 
-    UserSettings settings,
-    SingBoxTemplate template,
+    IConfigurationService configService,
     [FromKeyedServices("sing-box")] IConfigGenerator<SingBoxTemplate> generator, // Достаем твой генератор прямо из DI!
     JsonSerializerOptions options,                                               // Настройки JSON из DI
     ILogger<Program> logger) =>
 {
+    var settings = configService.Settings;
+    var template = configService.Template;
+
     // --- ШАГ 1: Проверка хэша ---
     var salt = settings.BaseConfig.Salt;
     var expectedHashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
@@ -96,3 +72,4 @@ app.MapGet("/configs/{hash}/{username}.json", async (
 
 // 4. Запускаем сервер!
 app.Run();
+

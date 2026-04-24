@@ -21,10 +21,14 @@ public static class DependencyInjectionExtensions
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         };
-        jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+            jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         services.AddSingleton(jsonOptions);
         
+        services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
         services.AddLogging(builder =>
+
+
         {
             builder.AddSimpleConsole(options =>
             {
