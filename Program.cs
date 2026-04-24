@@ -70,6 +70,14 @@ app.MapGet("/configs/{hash}/{username}.json", async (
     }
 });
 
+// Очистка кэша удаленных подписок (локальные файлы трогать не нужно, они следят за диском)
+app.MapPost("/cache/clear", (IRemoteSubscriptionCache cache, ILogger<Program> logger) =>
+{
+    cache.Clear();
+    logger.LogInformation("Кэш удаленных подписок очищен по запросу.");
+    return Results.Ok(new { message = "Cache cleared" });
+});
+
 // 4. Запускаем сервер!
 app.Run();
 

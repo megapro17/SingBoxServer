@@ -26,4 +26,10 @@ public record UserProfile(
     List<string>? Outbounds = null
 );
 
-public record ServerSource(List<string> Tags, ServerType Type, ServerFormat Format, string Path);
+public record ServerSource(
+    List<string> Tags, 
+    ServerType Type, 
+    ServerFormat Format, 
+    string Path, 
+    int? CacheTtl = null // Минуты. 0 = бесконечно (до перезапуска). null = 5 минут (по умолчанию).
+);

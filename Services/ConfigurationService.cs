@@ -16,11 +16,14 @@ public class ConfigurationService : IConfigurationService, IDisposable
     private readonly string _templatePath = @"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json";
     private readonly JsonSerializerOptions _options;
     private readonly ILogger<ConfigurationService> _logger;
-    
-    private UserSettings _settings;
-    private SingBoxTemplate _template;
+    private readonly SemaphoreSlim _reloadLock = new(1, 1);
+
+    private UserSettings _settings = null!;
+    private SingBoxTemplate _template = null!;
     private FileSystemWatcher? _settingsWatcher;
     private FileSystemWatcher? _templateWatcher;
+    private Timer? _debounceTimer;
+    private bool _disposed;
 
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
@@ -39,11 +42,14 @@ public class ConfigurationService : IConfigurationService, IDisposable
         {
             var settingsInput = File.ReadAllText(_settingsPath);
             var templateInput = File.ReadAllText(_templatePath);
-            _settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, _options) ?? throw new Exception();
-            _template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, _options) ?? throw new Exception();
+            _settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, _options)
+                ?? throw new InvalidOperationException($"Не удалось десериализовать {_settingsPath} — результат null.");
+            _template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, _options)
+                ?? throw new InvalidOperationException($"Не удалось десериализовать {_templatePath} — результат null.");
             _logger.LogInformation("Конфигурации успешно загружены.");
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             _logger.LogError(ex, "Ошибка загрузки конфигураций.");
             if (_settings == null) throw;
         }
@@ -51,17 +57,54 @@ public class ConfigurationService : IConfigurationService, IDisposable
 
     private void SetupWatchers()
     {
+        // Debounce: ждём 500мс после последнего события, потом один раз грузим
+        var debounceCallback = new Timer(_ =>
+        {
+            if (_disposed) return;
+            _ = TryReloadAsync();
+        }, null, Timeout.Infinite, Timeout.Infinite);
+        _debounceTimer = debounceCallback;
+
         _settingsWatcher = new FileSystemWatcher(Path.GetDirectoryName(_settingsPath)!) { Filter = "settings.json" };
-        _settingsWatcher.Changed += (s, e) => LoadAll();
+        _settingsWatcher.Changed += (s, e) => debounceCallback.Change(500, Timeout.Infinite);
         _settingsWatcher.EnableRaisingEvents = true;
 
         _templateWatcher = new FileSystemWatcher(Path.GetDirectoryName(_templatePath)!) { Filter = "latest_whitelist.json" };
-        _templateWatcher.Changed += (s, e) => LoadAll();
+        _templateWatcher.Changed += (s, e) => debounceCallback.Change(500, Timeout.Infinite);
         _templateWatcher.EnableRaisingEvents = true;
     }
 
-    public void Dispose() {
+    private async Task TryReloadAsync()
+    {
+        if (!await _reloadLock.WaitAsync(TimeSpan.Zero))
+        {
+            _logger.LogDebug("Пропущен дублирующий reload — предыдущий ещё выполняется.");
+            return;
+        }
+
+        try
+        {
+            LoadAll();
+        }
+        finally
+        {
+            _reloadLock.Release();
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+
+        // Отключаем события до dispose — иначе колбэк может сработать на умирающем объекте
+        _settingsWatcher?.EnableRaisingEvents = false;
+        _templateWatcher?.EnableRaisingEvents = false;
+
+        // Останавливаем и удаляем таймер
+        _debounceTimer?.Dispose();
+
         _settingsWatcher?.Dispose();
         _templateWatcher?.Dispose();
+        _reloadLock.Dispose();
     }
 }

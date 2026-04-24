@@ -2,12 +2,15 @@ using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using SingBoxServer.Models;
 using SingBoxServer.Logging;
-using System.Text; // Твои общие логи
+using System.Text;
 
 namespace SingBoxServer.Services.SubscriptionLoader;
 
-public class SubscriptionLoader(HttpClient httpClient, ILogger<SubscriptionLoader> logger) : ISubscriptionLoader
-// : ISubscriptionLoader
+public class SubscriptionLoader(
+    HttpClient httpClient, 
+    ILogger<SubscriptionLoader> logger,
+    IRemoteSubscriptionCache remoteCache,
+    ILocalFileCache localFileCache) : ISubscriptionLoader
 {
     public async Task<string> LoadContentAsync(ServerSource server, CancellationToken ct = default)
     {
@@ -29,17 +32,24 @@ public class SubscriptionLoader(HttpClient httpClient, ILogger<SubscriptionLoade
         };
     }
 
-
     private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
     {
-        logger.LogLoadingLocalConfig(server.Path);
-        return await File.ReadAllTextAsync(server.Path, ct);
+        // Используем кэш с FileSystemWatcher (читает диск только при первом запросе или изменении)
+        return await localFileCache.GetContentAsync(server.Path, ct);
     }
+
     private async Task<string> DownloadRemoteFileAsync(ServerSource server, CancellationToken ct)
     {
-        logger.LogDownloadingSubscription("name", server.Path);
-        return await httpClient.GetStringAsync(server.Path, ct);
+        // Определяем TTL: по умолчанию 5 минут, если 0 — бесконечно
+        var ttlMinutes = server.CacheTtl ?? 5;
+        
+        return await remoteCache.GetOrCreateAsync(server.Path, async () =>
+        {
+            logger.LogDownloadingSubscription("name", server.Path);
+            return await httpClient.GetStringAsync(server.Path, ct) ?? throw new InvalidOperationException("Пустой ответ от сервера");
+        }, ttlMinutes);
     }
+
     private async Task<string> ReadLocalV2rayAsync(ServerSource server, CancellationToken ct)
     {
         var base64String = await ReadLocalFileAsync(server, ct);

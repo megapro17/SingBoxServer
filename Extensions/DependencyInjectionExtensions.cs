@@ -23,9 +23,13 @@ public static class DependencyInjectionExtensions
         };
             jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         services.AddSingleton(jsonOptions);
-        
+
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         
+        // Кэширование
+        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCacheService>(); // Для удаленных (TTL + Clear)
+        services.AddSingleton<ILocalFileCache, LocalFileCacheService>(); // Для локальных (Watcher)
+
         services.AddLogging(builder =>
 
 
