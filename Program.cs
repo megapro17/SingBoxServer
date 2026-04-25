@@ -57,7 +57,7 @@ app.MapGet("/configs/{hash}/{username}.json", async (
     {
         logger.LogInformation("Генерируем конфиг на лету для юзера {Username}", username);
         
-        var finalConfig = await generator.GenerateAsync(userProfile, settings.Servers, template);
+        var finalConfig = await generator.GenerateAsync(userProfile);
         
         // Магия .NET: метод Results.Json сам превратит объект в строку, 
         // применит твои options (snake_case и тд) и добавит заголовок Content-Type: application/json

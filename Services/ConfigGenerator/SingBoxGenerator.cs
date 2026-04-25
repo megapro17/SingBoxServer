@@ -7,17 +7,22 @@ using SingBoxServer.Services.SubscriptionLoader;
 
 namespace SingBoxServer.Services.ConfigGenerator;
 
-public partial class SingBoxGenerator(ILogger<SingBoxGenerator> logger, ISubscriptionLoader loader, JsonSerializerOptions jsonOptions) : IConfigGenerator<SingBoxTemplate>
+public partial class SingBoxGenerator(
+    ILogger<SingBoxGenerator> logger,
+    ISubscriptionLoader loader,
+    JsonSerializerOptions jsonOptions,
+    IConfigurationService configService) : IConfigGenerator<SingBoxTemplate>
 {
-    public string Name => "sing-box";
-
-    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, Dictionary<string, ServerSource>? servers, SingBoxTemplate template)
+    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user)
     {
         logger.LogInformation("Начинаем генерацию конфига");
+        
+        var template = configService.Template;
+        var servers = configService.Settings.Servers;
+
         // Метод Generate превращается в "Оглавление"
         return template with
         {
-            //Log = new JsonObject { ["level"] = "debug" },
             Outbounds = await BuildOutboundsAsync(user, servers),
             Route = ProcessNode(template.Route),
             Dns = ProcessNode(template.Dns)

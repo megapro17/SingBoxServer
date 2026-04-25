@@ -9,7 +9,5 @@ public enum ServerType
 public enum ServerFormat
 {
     SingBox,
-    Vless,
-    Clash,
     V2ray
 }
