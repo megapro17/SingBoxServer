@@ -16,17 +16,113 @@ public partial class SingBoxGenerator(
     public async Task<SingBoxTemplate> GenerateAsync(UserProfile user)
     {
         logger.LogInformation("Начинаем генерацию конфига");
-        
+
         var template = configService.Template;
         var servers = configService.Settings.Servers;
 
-        // Метод Generate превращается в "Оглавление"
+        // Собираем outbounds (с учетом DPI из кастомных правил)
+        var outbounds = await BuildOutboundsAsync(user, servers, user.CustomRules);
+
+        // Создаем глубокую копию шаблона и применяем замены
+        var route = ProcessNode(template.Route);
+        var dns = ProcessNode(template.Dns);
+
+        // Применяем кастомные правила пользователя
+        if (user.CustomRules is { } customRules)
+        {
+            route = InjectRouteRules(route, customRules.Route, customRules.Hijack);
+            dns = InjectDnsRules(dns, customRules.Dns);
+        }
+
         return template with
         {
-            Outbounds = await BuildOutboundsAsync(user, servers),
-            Route = ProcessNode(template.Route),
-            Dns = ProcessNode(template.Dns)
+            Outbounds = outbounds,
+            Route = route,
+            Dns = dns,
+            Experimental = user.CustomRules?.Experimental ?? template.Experimental,
+            Inbounds = user.CustomRules?.Inbounds ?? template.Inbounds
         };
+    }
+
+    /// <summary>
+    /// Вставляет пользовательские правила маршрутизации в шаблон.
+    /// Ищет якорь (clash_mode: Global или Direct) и вставляет после него.
+    /// </summary>
+    private static JsonNode? InjectRouteRules(JsonNode? route, JsonArray? customRules, JsonNode? hijack)
+    {
+        if (customRules is null || route is not JsonObject routeObj)
+            return route;
+
+        if (routeObj["rules"] is not JsonArray rules)
+            return route;
+
+        // Определяем позицию для вставки
+        int insertIndex = FindInsertIndex(rules);
+
+        // Вставляем правила (в обратном порядке, чтобы сохранить порядок)
+        for (int i = customRules.Count - 1; i >= 0; i--)
+        {
+            rules.Insert(insertIndex, customRules[i]!.DeepClone());
+        }
+
+        // Применяем hijack (заменяем первое правило)
+        if (hijack is not null && rules.Count > 0)
+        {
+            rules[0] = hijack.DeepClone();
+        }
+
+        return routeObj;
+    }
+
+    /// <summary>
+    /// Ищет якорь для вставки: сначала clash_mode: Global, затем Direct, иначе 0.
+    /// </summary>
+    private static int FindInsertIndex(JsonArray rules)
+    {
+        // Ищем Global
+        for (int i = 0; i < rules.Count; i++)
+        {
+            if (rules[i] is JsonObject rule &&
+                rule["clash_mode"]?.GetValueKind() == JsonValueKind.String &&
+                rule["clash_mode"]!.GetValue<string>() == "Global")
+            {
+                return i + 1;
+            }
+        }
+
+        // Ищем Direct
+        for (int i = 0; i < rules.Count; i++)
+        {
+            if (rules[i] is JsonObject rule &&
+                rule["clash_mode"]?.GetValueKind() == JsonValueKind.String &&
+                rule["clash_mode"]!.GetValue<string>() == "Direct")
+            {
+                return i + 1;
+            }
+        }
+
+        // Если якоря нет — вставляем в начало
+        return 0;
+    }
+
+    /// <summary>
+    /// Вставляет DNS-правила пользователя в начало списка.
+    /// </summary>
+    private static JsonNode? InjectDnsRules(JsonNode? dns, JsonArray? customRules)
+    {
+        if (customRules is null || dns is not JsonObject dnsObj)
+            return dns;
+
+        if (dnsObj["rules"] is not JsonArray rules)
+            return dns;
+
+        // Вставляем в начало (в обратном порядке)
+        for (int i = customRules.Count - 1; i >= 0; i--)
+        {
+            rules.Insert(0, customRules[i]!.DeepClone());
+        }
+
+        return dnsObj;
     }
 
     private JsonNode? ProcessNode(JsonNode? node)
@@ -39,7 +135,7 @@ public partial class SingBoxGenerator(
         return clone;
     }
 
-    private void ReplacePlaceholders(JsonNode? node)
+    private static void ReplacePlaceholders(JsonNode? node)
     {
         if (node is JsonObject obj)
         {
@@ -70,8 +166,10 @@ public partial class SingBoxGenerator(
         }
     }
 
-    // А вот тут уже кипит реальная работа
-    private async Task<List<OutboundNode>> BuildOutboundsAsync(UserProfile user, Dictionary<string, ServerSource>? servers)
+    private async Task<List<OutboundNode>> BuildOutboundsAsync(
+        UserProfile user,
+        Dictionary<string, ServerSource>? servers,
+        RuleProfile? customRules)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(user.Outbounds);
@@ -88,60 +186,67 @@ public partial class SingBoxGenerator(
 
             if (server != null)
             {
-                //logger.LogServerInfo(string.Join(", ", server.Tags), server.Type, server.Format, server.Path);
                 var rawContent = await loader.LoadContentAsync(server);
                 if (string.IsNullOrWhiteSpace(rawContent)) continue;
 
-                // Метод теперь просто возвращает список, а мы добавляем его к общему
                 var extracted = ExtractProxies(rawContent);
                 RenameProxies(extracted, outbound, server.Tags);
                 allProxies.AddRange(extracted);
             }
         }
 
-        // 2. Добавляем дефолтные узлы (статика)
+        // Добавляем DPI bypass, если включен в кастомных правилах
+        if (customRules?.Dpi == true)
+        {
+            finalOutbounds.Add(new OutboundNode
+            {
+                Type = "socks",
+                Tag = Constants.ProxyDpi,
+                ExtensionData = new Dictionary<string, JsonElement>
+                {
+                    ["server"] = JsonDocument.Parse("\"127.0.0.1\"").RootElement,
+                    ["server_port"] = JsonDocument.Parse("1080").RootElement
+                }
+            });
+        }
+
+        // Добавляем direct
         finalOutbounds.Add(new OutboundNode { Type = "direct", Tag = Constants.ProxyDirect });
 
-        // 3. ГЕНЕРАЦИЯ SELECTOR'а (Только если мы нашли хоть один прокси)
+        // Генерация selector (только если нашли прокси)
         if (allProxies.Count > 0)
         {
-            // С помощью LINQ вытаскиваем только имена (Tag) из всех собранных прокси
             var proxyTags = allProxies.Select(p => p.Tag).ToList();
 
             var selector = new OutboundNode
             {
                 Type = "selector",
-                Tag = Constants.ProxySelector,                 // Имя нашего селектора
-                OutboundsTags = proxyTags,        // Передаем список имен серверов
-                DefaultTag = proxyTags.FirstOrDefault() // Ставим первый сервер по умолчанию
+                Tag = Constants.ProxySelector,
+                OutboundsTags = proxyTags,
+                DefaultTag = proxyTags.FirstOrDefault()
             };
 
-            // Добавляем селектор в итоговый массив
             finalOutbounds.Add(selector);
         }
 
-        // 4. КОПИРОВАНИЕ ВСЕХ ПРОКСИ
-        // Добавляем сами настройки серверов в конец файла
+        // Добавляем все прокси
         finalOutbounds.AddRange(allProxies);
 
         foreach (var outbound in finalOutbounds)
         {
-            logger.LogInformation(outbound.Tag);
+            logger.LogInformation("Outbound: {Tag}", outbound.Tag);
         }
 
         return finalOutbounds;
     }
 
-    // Убрали ref, теперь метод отвечает только за парсинг и фильтрацию одной строки
     private List<OutboundNode> ExtractProxies(string rawContent)
     {
-        var content = rawContent.TrimStart(); // Убираем возможные пробелы в начале
+        var content = rawContent.TrimStart();
 
-        // --- ДОБАВЛЯЕМ НОВУЮ ЛОГИКУ ДЛЯ ССЫЛОК ---
         if (content.StartsWith("vless://", StringComparison.OrdinalIgnoreCase))
         {
             var nodes = new List<OutboundNode>();
-            // Разбиваем текст по строкам
             var lines = content.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
@@ -159,15 +264,13 @@ public partial class SingBoxGenerator(
             var parsedNodes = JsonSerializer.Deserialize<SingBoxTemplate>(rawContent, jsonOptions);
 
             if (parsedNodes?.Outbounds == null)
-                return []; // Возвращаем пустой список, если ничего нет
+                return [];
 
-            // Вся логика фильтрации в одном элегантном LINQ-запросе с паттерн-матчингом.
-            // Мы говорим: "Оставь только те узлы, чей тип НЕ равен перечисленным"
             return [.. parsedNodes.Outbounds.Where(o => o.Type is not ("selector" or "urltest" or "direct" or "block" or "dns"))];
         }
     }
 
-    private void RenameProxies(List<OutboundNode> proxies, string name, List<string>? tags = null)
+    private static void RenameProxies(List<OutboundNode> proxies, string name, List<string>? tags = null)
     {
         for (int i = 0; i < proxies.Count; i++)
         {
@@ -180,21 +283,17 @@ public partial class SingBoxGenerator(
 
     private OutboundNode? ParseVlessLink(string link)
     {
-        // 1. Проверяем, что это вообще правильная ссылка VLESS
         if (!Uri.TryCreate(link.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != "vless")
             return null;
 
-        // 2. Достаем параметры запроса (всё, что после знака ?)
         var queryParams = uri.Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Split('='))
             .Where(p => p.Length == 2)
             .ToDictionary(p => p[0], p => Uri.UnescapeDataString(p[1]));
 
-        // 3. Достаем имя (всё, что после знака #), и раскодируем %D0%93... в буквы
         var tag = Uri.UnescapeDataString(uri.Fragment.TrimStart('#'));
 
-        // 4. Собираем объект Sing-box через гибкий JsonObject
         var proxyNode = new JsonObject
         {
             ["type"] = "vless",
@@ -207,7 +306,6 @@ public partial class SingBoxGenerator(
         if (queryParams.TryGetValue("flow", out var flow)) proxyNode["flow"] = flow;
         if (queryParams.TryGetValue("type", out var network)) proxyNode["network"] = network;
 
-        // 5. Собираем секцию TLS и Reality (если есть)
         var security = queryParams.GetValueOrDefault("security");
         if (security is "tls" or "reality")
         {
@@ -228,8 +326,6 @@ public partial class SingBoxGenerator(
             proxyNode["tls"] = tlsNode;
         }
 
-        // 6. МАГИЯ: Десериализуем наш собранный JsonObject в строгую OutboundNode.
-        // Все нестандартные поля автоматически упадут в ExtensionData!
         return proxyNode.Deserialize<OutboundNode>(jsonOptions);
     }
 }

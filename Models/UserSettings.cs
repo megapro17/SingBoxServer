@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace SingBoxServer.Models;
@@ -12,9 +14,52 @@ public record UserSettings(
 );
 
 public record BaseConfig(string Salt, string Type, string Path);
-public record RuleProfile( /* Твои правила route, dns и т.д. */ )
+
+/// <summary>
+/// Кастомные правила пользователя для инъекции в шаблон sing-box.
+/// </summary>
+public record RuleProfile
 {
-    public bool Dpi { get; internal set; }
+    /// <summary>
+    /// Включить DPI bypass (добавляет socks-прокси на 127.0.0.1:1080)
+    /// </summary>
+    [JsonPropertyName("dpi")]
+    public bool Dpi { get; set; }
+
+    /// <summary>
+    /// Правила маршрутизации для вставки в route.rules
+    /// </summary>
+    [JsonPropertyName("route")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonArray? Route { get; set; }
+
+    /// <summary>
+    /// DNS-правила для вставки в dns.rules
+    /// </summary>
+    [JsonPropertyName("dns")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonArray? Dns { get; set; }
+
+    /// <summary>
+    /// Заменяет первую запись в route.rules (DNS hijack)
+    /// </summary>
+    [JsonPropertyName("hijack")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonNode? Hijack { get; set; }
+
+    /// <summary>
+    /// Полностью заменяет секцию experimental
+    /// </summary>
+    [JsonPropertyName("experimental")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonNode? Experimental { get; set; }
+
+    /// <summary>
+    /// Полностью заменяет секцию inbounds
+    /// </summary>
+    [JsonPropertyName("inbounds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonArray? Inbounds { get; set; }
 }
 
 // Профиль пользователя
