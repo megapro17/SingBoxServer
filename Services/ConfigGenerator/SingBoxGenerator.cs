@@ -24,14 +24,14 @@ public partial class SingBoxGenerator(
         var outbounds = await BuildOutboundsAsync(user, servers, user.CustomRules);
 
         // Создаем глубокую копию шаблона и применяем замены
-        var route = ProcessNode(template.Route);
-        var dns = ProcessNode(template.Dns);
+        var route = JsonPlaceholderReplacer.ProcessNode(template.Route);
+        var dns = JsonPlaceholderReplacer.ProcessNode(template.Dns);
 
         // Применяем кастомные правила пользователя
         if (user.CustomRules is { } customRules)
         {
-            route = InjectRouteRules(route, customRules.Route, customRules.Hijack);
-            dns = InjectDnsRules(dns, customRules.Dns);
+            route = RuleInjector.InjectRouteRules(route, customRules.Route, customRules.Hijack);
+            dns = RuleInjector.InjectDnsRules(dns, customRules.Dns);
         }
 
         return template with
@@ -43,129 +43,6 @@ public partial class SingBoxGenerator(
             Inbounds = user.CustomRules?.Inbounds ?? template.Inbounds
         };
     }
-
-    /// <summary>
-    /// Вставляет пользовательские правила маршрутизации в шаблон.
-    /// Ищет якорь (clash_mode: Global или Direct) и вставляет после него.
-    /// </summary>
-    private static JsonNode? InjectRouteRules(JsonNode? route, JsonArray? customRules, JsonNode? hijack)
-    {
-        if (customRules is null || route is not JsonObject routeObj)
-            return route;
-
-        if (routeObj["rules"] is not JsonArray rules)
-            return route;
-
-        // Определяем позицию для вставки
-        int insertIndex = FindInsertIndex(rules);
-
-        // Вставляем правила (в обратном порядке, чтобы сохранить порядок)
-        for (int i = customRules.Count - 1; i >= 0; i--)
-        {
-            rules.Insert(insertIndex, customRules[i]!.DeepClone());
-        }
-
-        // Применяем hijack (заменяем первое правило)
-        if (hijack is not null && rules.Count > 0)
-        {
-            rules[0] = hijack.DeepClone();
-        }
-
-        return routeObj;
-    }
-
-    /// <summary>
-    /// Ищет якорь для вставки: сначала clash_mode: Global, затем Direct, иначе 0.
-    /// </summary>
-    private static int FindInsertIndex(JsonArray rules)
-    {
-        // Ищем Global
-        for (int i = 0; i < rules.Count; i++)
-        {
-            if (rules[i] is JsonObject rule &&
-                rule["clash_mode"]?.GetValueKind() == JsonValueKind.String &&
-                rule["clash_mode"]!.GetValue<string>() == "Global")
-            {
-                return i + 1;
-            }
-        }
-
-        // Ищем Direct
-        for (int i = 0; i < rules.Count; i++)
-        {
-            if (rules[i] is JsonObject rule &&
-                rule["clash_mode"]?.GetValueKind() == JsonValueKind.String &&
-                rule["clash_mode"]!.GetValue<string>() == "Direct")
-            {
-                return i + 1;
-            }
-        }
-
-        // Если якоря нет — вставляем в начало
-        return 0;
-    }
-
-    /// <summary>
-    /// Вставляет DNS-правила пользователя в начало списка.
-    /// </summary>
-    private static JsonNode? InjectDnsRules(JsonNode? dns, JsonArray? customRules)
-    {
-        if (customRules is null || dns is not JsonObject dnsObj)
-            return dns;
-
-        if (dnsObj["rules"] is not JsonArray rules)
-            return dns;
-
-        // Вставляем в начало (в обратном порядке)
-        for (int i = customRules.Count - 1; i >= 0; i--)
-        {
-            rules.Insert(0, customRules[i]!.DeepClone());
-        }
-
-        return dnsObj;
-    }
-
-    private JsonNode? ProcessNode(JsonNode? node)
-    {
-        if (node == null) return null;
-
-        // Создаем глубокую копию, чтобы не менять исходный шаблон
-        var clone = node.DeepClone();
-        ReplacePlaceholders(clone);
-        return clone;
-    }
-
-    private static void ReplacePlaceholders(JsonNode? node)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var prop in obj.ToArray())
-            {
-                if (prop.Value is JsonValue val && val.GetValueKind() == JsonValueKind.String)
-                {
-                    string currentVal = val.GetValue<string>();
-                    if (currentVal == Constants.ProxyOut)
-                        obj[prop.Key] = JsonValue.Create(Constants.ProxySelector);
-                    else if (currentVal == Constants.ProxyOutDirect)
-                        obj[prop.Key] = JsonValue.Create(Constants.ProxyDirect);
-                    else
-                        ReplacePlaceholders(prop.Value);
-                }
-                else
-                {
-                    ReplacePlaceholders(prop.Value);
-                }
-            }
-        }
-        else if (node is JsonArray array)
-        {
-            foreach (var item in array)
-            {
-                ReplacePlaceholders(item);
-            }
-        }
-    }
-
     private async Task<List<OutboundNode>> BuildOutboundsAsync(
         UserProfile user,
         Dictionary<string, ServerSource>? servers,
@@ -251,7 +128,7 @@ public partial class SingBoxGenerator(
 
             foreach (var line in lines)
             {
-                var parsedNode = ParseVlessLink(line);
+                var parsedNode = VlessLinkParser.Parse(line, jsonOptions);
                 if (parsedNode != null)
                 {
                     nodes.Add(parsedNode);
@@ -281,51 +158,5 @@ public partial class SingBoxGenerator(
         }
     }
 
-    private OutboundNode? ParseVlessLink(string link)
-    {
-        if (!Uri.TryCreate(link.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != "vless")
-            return null;
 
-        var queryParams = uri.Query.TrimStart('?')
-            .Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => p.Split('='))
-            .Where(p => p.Length == 2)
-            .ToDictionary(p => p[0], p => Uri.UnescapeDataString(p[1]));
-
-        var tag = Uri.UnescapeDataString(uri.Fragment.TrimStart('#'));
-
-        var proxyNode = new JsonObject
-        {
-            ["type"] = "vless",
-            ["tag"] = string.IsNullOrWhiteSpace(tag) ? "vless-out" : tag,
-            ["server"] = uri.IdnHost,
-            ["server_port"] = uri.Port,
-            ["uuid"] = uri.UserInfo
-        };
-
-        if (queryParams.TryGetValue("flow", out var flow)) proxyNode["flow"] = flow;
-        if (queryParams.TryGetValue("type", out var network)) proxyNode["network"] = network;
-
-        var security = queryParams.GetValueOrDefault("security");
-        if (security is "tls" or "reality")
-        {
-            var tlsNode = new JsonObject { ["enabled"] = true };
-
-            if (queryParams.TryGetValue("sni", out var sni)) tlsNode["server_name"] = sni;
-            if (queryParams.TryGetValue("fp", out var fp))
-                tlsNode["utls"] = new JsonObject { ["enabled"] = true, ["fingerprint"] = fp };
-
-            if (security == "reality")
-            {
-                var realityNode = new JsonObject { ["enabled"] = true };
-                if (queryParams.TryGetValue("pbk", out var pbk)) realityNode["public_key"] = pbk;
-                if (queryParams.TryGetValue("sid", out var sid)) realityNode["short_id"] = sid;
-                tlsNode["reality"] = realityNode;
-            }
-
-            proxyNode["tls"] = tlsNode;
-        }
-
-        return proxyNode.Deserialize<OutboundNode>(jsonOptions);
-    }
 }
