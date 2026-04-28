@@ -27,8 +27,8 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         
         // Кэширование
-        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCacheService>(); // Для удаленных (TTL + Clear)
-        services.AddSingleton<ILocalFileCache, LocalFileCacheService>(); // Для локальных (Watcher)
+        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>(); // Для удаленных (TTL + Clear)
+        services.AddSingleton<ILocalFileCache, LocalFileCache>(); // Для локальных (Watcher)
 
         services.AddLogging(builder =>
 

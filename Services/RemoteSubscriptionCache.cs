@@ -12,12 +12,12 @@ public interface IRemoteSubscriptionCache
     void Clear();
 }
 
-public class RemoteSubscriptionCacheService : IRemoteSubscriptionCache
+public class RemoteSubscriptionCache : IRemoteSubscriptionCache
 {
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-    private readonly ILogger<RemoteSubscriptionCacheService> _logger;
+    private readonly ILogger<RemoteSubscriptionCache> _logger;
 
-    public RemoteSubscriptionCacheService(ILogger<RemoteSubscriptionCacheService> logger)
+    public RemoteSubscriptionCache(ILogger<RemoteSubscriptionCache> logger)
     {
         _logger = logger;
     }

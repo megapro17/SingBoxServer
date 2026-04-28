@@ -4,13 +4,13 @@ using SingBoxServer.Models;
 
 namespace SingBoxServer.Services;
 
-public interface IConfigurationService
+public interface IConfigurationService : IDisposable
 {
     UserSettings Settings { get; }
     SingBoxTemplate Template { get; }
 }
 
-public class ConfigurationService : IConfigurationService, IDisposable
+public class ConfigurationService : IConfigurationService
 {
     private readonly string _settingsPath = @"C:\Users\megapro17\SourceCode\SingBoxServer\settings.json";
     private readonly string _templatePath = @"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json";

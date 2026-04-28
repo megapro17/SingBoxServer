@@ -11,17 +11,17 @@ public interface ILocalFileCache
     Task<string> GetContentAsync(string path, CancellationToken ct = default);
 }
 
-public class LocalFileCacheService : ILocalFileCache, IDisposable
+public class LocalFileCache : ILocalFileCache, IDisposable
 {
-    private readonly ILogger<LocalFileCacheService> _logger;
-    
+    private readonly ILogger<LocalFileCache> _logger;
+
     // Кэш содержимого файлов (Путь -> Текст)
     private readonly ConcurrentDictionary<string, string> _contentCache = new();
-    
+
     // Watcher'ы для директорий (Директория -> Watcher)
     private readonly ConcurrentDictionary<string, FileSystemWatcher> _directoryWatchers = new();
 
-    public LocalFileCacheService(ILogger<LocalFileCacheService> logger)
+    public LocalFileCache(ILogger<LocalFileCache> logger)
     {
         _logger = logger;
     }
