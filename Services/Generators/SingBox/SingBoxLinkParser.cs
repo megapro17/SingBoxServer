@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using SingBoxServer.Core;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 public static class SingBoxLinkParser
@@ -49,6 +50,6 @@ public static class SingBoxLinkParser
             proxyNode["tls"] = tlsNode;
         }
 
-        return proxyNode.Deserialize<OutboundNode>(jsonOptions);
+        return JsonSerializer.Deserialize(proxyNode, AppJsonContext.Default.OutboundNode);
     }
 }

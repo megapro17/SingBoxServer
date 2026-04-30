@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SingBoxServer.Core;
 using SingBoxServer.Extensions;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
@@ -13,7 +14,7 @@ public partial class Program
 {
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        var builder = WebApplication.CreateSlimBuilder(args);
         var settingsPath = builder.Configuration["SettingsPath"];
         var templatePath = builder.Configuration["TemplatePath"];
 
@@ -56,7 +57,7 @@ public partial class Program
 
                 // Магия .NET: метод Results.Json сам превратит объект в строку, 
                 // применит твои options (snake_case и тд) и добавит заголовок Content-Type: application/json
-                return Results.Json(finalConfig, options);
+                return Results.Json(finalConfig, AppJsonContext.Default);
             }
             catch (Exception ex)
             {

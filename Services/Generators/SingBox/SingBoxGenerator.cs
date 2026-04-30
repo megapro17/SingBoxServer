@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SingBoxServer.Core;
 using SingBoxServer.Logging;
 using SingBoxServer.Models;
 using SingBoxServer.Services.Subscriptions;
@@ -8,7 +9,6 @@ namespace SingBoxServer.Services.Generators.SingBox;
 public partial class SingBoxGenerator(
     ILogger<SingBoxGenerator> logger,
     ISubscriptionLoader loader,
-    JsonSerializerOptions jsonOptions,
     IConfigurationService configService) : IConfigGenerator<SingBoxTemplate>
 {
     public async Task<SingBoxTemplate> GenerateAsync(UserProfile user)
@@ -126,7 +126,7 @@ public partial class SingBoxGenerator(
 
             foreach (var line in lines)
             {
-                var parsedNode = SingBoxLinkParser.Parse(line, jsonOptions);
+                var parsedNode = SingBoxLinkParser.Parse(line, AppJsonContext.Default.Options);
                 if (parsedNode != null)
                 {
                     nodes.Add(parsedNode);
@@ -136,7 +136,7 @@ public partial class SingBoxGenerator(
         }
         else
         {
-            var parsedNodes = JsonSerializer.Deserialize<SingBoxTemplate>(rawContent, jsonOptions);
+            var parsedNodes = JsonSerializer.Deserialize(rawContent, AppJsonContext.Default.SingBoxTemplate);
 
             if (parsedNodes?.Outbounds == null)
                 return [];

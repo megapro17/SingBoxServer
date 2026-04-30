@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SingBoxServer.Core;
 using SingBoxServer.Models;
 using SingBoxServer.Services.Generators.SingBox;
 
@@ -12,7 +13,6 @@ public interface IConfigurationService : IDisposable
 
 public class ConfigurationService : IConfigurationService
 {
-    private readonly JsonSerializerOptions _options;
     private readonly ILogger<ConfigurationService> _logger;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
     private readonly string _settingsPath;
@@ -29,7 +29,7 @@ public class ConfigurationService : IConfigurationService
 
     public ConfigurationService(IConfiguration config, JsonSerializerOptions options, ILogger<ConfigurationService> logger)
     {
-        _options = options;
+        //_options = options;
         _logger = logger;
 
         _settingsPath = config["SettingsPath"]!;
@@ -44,9 +44,9 @@ public class ConfigurationService : IConfigurationService
         {
             var settingsInput = File.ReadAllText(_settingsPath);
             var templateInput = File.ReadAllText(_templatePath);
-            _settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, _options)
+            _settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, AppJsonContext.Default.UserSettings)
                 ?? throw new InvalidOperationException($"Не удалось десериализовать {_settingsPath} — результат null.");
-            _template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, _options)
+            _template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, AppJsonContext.Default.SingBoxTemplate)
                 ?? throw new InvalidOperationException($"Не удалось десериализовать {_templatePath} — результат null.");
             _logger.LogInformation("Конфигурации успешно загружены.");
         }
