@@ -1,6 +1,6 @@
 using SingBoxServer.Models;
 
-namespace SingBoxServer.Services.SubscriptionLoader;
+namespace SingBoxServer.Services.Subscriptions;
 
 public interface ISubscriptionLoader
 {

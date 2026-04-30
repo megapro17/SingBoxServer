@@ -1,5 +1,4 @@
-using Microsoft.Extensions.Logging;
-using SingBoxServer.Models;
+using SingBoxServer.Core.Models.Enums;
 
 namespace SingBoxServer.Logging;
 

@@ -1,6 +1,6 @@
 using SingBoxServer.Models;
 
-namespace SingBoxServer.Services.ConfigGenerator;
+namespace SingBoxServer.Services.Generators;
 
 public interface IConfigGenerator<T>
 {

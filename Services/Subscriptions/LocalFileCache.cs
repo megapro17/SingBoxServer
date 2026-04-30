@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace SingBoxServer.Services;
+namespace SingBoxServer.Services.Subscriptions;
 
 /// <summary>
 /// Кэш для локальных файлов. Читает файл один раз и следит за изменениями через FileSystemWatcher.

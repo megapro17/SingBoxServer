@@ -1,11 +1,9 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
 using SingBoxServer.Logging;
 using SingBoxServer.Models;
-using SingBoxServer.Services.SubscriptionLoader;
+using SingBoxServer.Services.Subscriptions;
 
-namespace SingBoxServer.Services.ConfigGenerator;
+namespace SingBoxServer.Services.Generators.SingBox;
 
 public partial class SingBoxGenerator(
     ILogger<SingBoxGenerator> logger,
@@ -30,8 +28,8 @@ public partial class SingBoxGenerator(
         // Применяем кастомные правила пользователя
         if (user.CustomRules is { } customRules)
         {
-            route = RuleInjector.InjectRouteRules(route, customRules.Route, customRules.Hijack);
-            dns = RuleInjector.InjectDnsRules(dns, customRules.Dns);
+            route = SingBoxRuleInjector.InjectRouteRules(route, customRules.Route, customRules.Hijack);
+            dns = SingBoxRuleInjector.InjectDnsRules(dns, customRules.Dns);
         }
 
         return template with
@@ -128,7 +126,7 @@ public partial class SingBoxGenerator(
 
             foreach (var line in lines)
             {
-                var parsedNode = VlessLinkParser.Parse(line, jsonOptions);
+                var parsedNode = SingBoxLinkParser.Parse(line, jsonOptions);
                 if (parsedNode != null)
                 {
                     nodes.Add(parsedNode);

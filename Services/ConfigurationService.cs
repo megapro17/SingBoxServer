@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using SingBoxServer.Models;
+using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Services;
 
@@ -12,12 +12,11 @@ public interface IConfigurationService : IDisposable
 
 public class ConfigurationService : IConfigurationService
 {
-    private readonly string _settingsPath = @"C:\Users\megapro17\SourceCode\SingBoxServer\settings.json";
-    private readonly string _templatePath = @"C:\Users\megapro17\SourceCode\sing-box\latest_whitelist.json";
     private readonly JsonSerializerOptions _options;
     private readonly ILogger<ConfigurationService> _logger;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
-
+    private readonly string _settingsPath;
+    private readonly string _templatePath;
     private UserSettings _settings = null!;
     private SingBoxTemplate _template = null!;
     private FileSystemWatcher? _settingsWatcher;
@@ -28,10 +27,13 @@ public class ConfigurationService : IConfigurationService
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
 
-    public ConfigurationService(JsonSerializerOptions options, ILogger<ConfigurationService> logger)
+    public ConfigurationService(IConfiguration config, JsonSerializerOptions options, ILogger<ConfigurationService> logger)
     {
         _options = options;
         _logger = logger;
+
+        _settingsPath = config["SettingsPath"]!;
+        _templatePath = config["TemplatePath"]!;
         LoadAll();
         SetupWatchers();
     }

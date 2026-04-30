@@ -1,11 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using SingBoxServer.Services;
-using SingBoxServer.Models;
-using SingBoxServer.Services.SubscriptionLoader;
-using SingBoxServer.Services.ConfigGenerator;
+using SingBoxServer.Services.Generators;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SingBoxServer.Services.Subscriptions;
+using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Extensions;
 
@@ -21,18 +19,13 @@ public static class DependencyInjectionExtensions
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         };
-            jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         services.AddSingleton(jsonOptions);
-
         services.AddSingleton<IConfigurationService, ConfigurationService>();
-        
-        // Кэширование
-        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>(); // Для удаленных (TTL + Clear)
-        services.AddSingleton<ILocalFileCache, LocalFileCache>(); // Для локальных (Watcher)
+        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();
+        services.AddSingleton<ILocalFileCache, LocalFileCache>();
 
         services.AddLogging(builder =>
-
-
         {
             builder.AddSimpleConsole(options =>
             {
@@ -44,7 +37,7 @@ public static class DependencyInjectionExtensions
         });
 
         services.AddHttpClient<ISubscriptionLoader, SubscriptionLoader>();
-        services.AddKeyedTransient<IConfigGenerator<SingBoxTemplate>, SingBoxGenerator>("sing-box");
+        services.AddTransient<IConfigGenerator<SingBoxTemplate>, SingBoxGenerator>();
         return services;
     }
 }

@@ -1,10 +1,9 @@
-using System.Net.Http;
-using Microsoft.Extensions.Logging;
 using SingBoxServer.Models;
 using SingBoxServer.Logging;
 using System.Text;
+using SingBoxServer.Core.Models.Enums;
 
-namespace SingBoxServer.Services.SubscriptionLoader;
+namespace SingBoxServer.Services.Subscriptions;
 
 public class SubscriptionLoader(
     HttpClient httpClient, 

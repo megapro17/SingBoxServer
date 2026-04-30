@@ -1,9 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using SingBoxServer.Models;
 
-namespace SingBoxServer.Services.ConfigGenerator;
-public static class VlessLinkParser
+namespace SingBoxServer.Services.Generators.SingBox;
+public static class SingBoxLinkParser
 {
     public static OutboundNode? Parse(string link, JsonSerializerOptions jsonOptions)
     {
