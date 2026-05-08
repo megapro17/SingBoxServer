@@ -138,7 +138,13 @@ public partial class SingBoxGenerator(
 
         foreach (var line in lines)
         {
-            if (line.StartsWith("vless://", StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith("vless://", StringComparison.OrdinalIgnoreCase) &&
+            !line.Contains("type=xhttp", StringComparison.OrdinalIgnoreCase) &&
+            !line.Contains("type=ws", StringComparison.OrdinalIgnoreCase) &&
+            !line.Contains("type=grpc", StringComparison.OrdinalIgnoreCase) &&
+            !line.Contains("xtls-rprx-vision-", StringComparison.OrdinalIgnoreCase) &&
+            !(line.Contains("security=reality", StringComparison.OrdinalIgnoreCase) && !line.Contains("fp=", StringComparison.OrdinalIgnoreCase)))
+
             {
                 var parsedNode = SingBoxLinkParser.Parse(line, AppJsonContext.Default.Options);
                 if (parsedNode != null)
