@@ -13,30 +13,24 @@ public class SubscriptionLoader(
 {
     public async Task<string> LoadContentAsync(ServerSource server, CancellationToken ct = default)
     {
-        return server.Type switch
+        // Шаг 1: Получаем "сырые" данные в зависимости от ИСТОЧНИКА (Type)
+        string rawContent = server.Type switch
         {
-            ServerType.Local => await HandleLocalLoadAsync(server, ct),
+            ServerType.Local => await localFileCache.GetContentAsync(server.Path, ct),
             ServerType.Remote => await DownloadRemoteFileAsync(server, ct),
-            _ => throw new NotSupportedException($"Тип {server.Type} не поддерживается")
+            ServerType.Inline => server.Path,
+            _ => throw new NotSupportedException($"Тип источника {server.Type} не поддерживается")
         };
-    }
 
-    private async Task<string> HandleLocalLoadAsync(ServerSource server, CancellationToken ct)
-    {
+        // Шаг 2: Обрабатываем строку в зависимости от ФОРМАТА (Format)
         return server.Format switch
         {
-            ServerFormat.SingBox => await ReadLocalFileAsync(server, ct),
-            ServerFormat.V2ray => await ReadLocalV2rayAsync(server, ct),
-            _ => throw new NotSupportedException($"Формат {server.Format} не поддерживается")
+            ServerFormat.SingBox => rawContent, // Для SingBox отдаем как есть
+            ServerFormat.V2ray => DecodeV2rayBase64(rawContent), // V2ray всегда нужно декодировать из Base64
+            ServerFormat.Vless => rawContent,
+            _ => throw new NotSupportedException($"Формат данных {server.Format} не поддерживается")
         };
     }
-
-    private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
-    {
-        // Используем кэш с FileSystemWatcher (читает диск только при первом запросе или изменении)
-        return await localFileCache.GetContentAsync(server.Path, ct);
-    }
-
     private async Task<string> DownloadRemoteFileAsync(ServerSource server, CancellationToken ct)
     {
         // Определяем TTL: по умолчанию 5 минут, если 0 — бесконечно
@@ -47,6 +41,21 @@ public class SubscriptionLoader(
             logger.LogDownloadingSubscription("name", server.Path);
             return await httpClient.GetStringAsync(server.Path, ct) ?? throw new InvalidOperationException("Пустой ответ от сервера");
         }, ttlMinutes);
+    }
+
+    private static string DecodeV2rayBase64(string base64String)
+    {
+        if (string.IsNullOrWhiteSpace(base64String))
+            return base64String;
+
+        base64String = base64String.Trim();
+        byte[] data = Convert.FromBase64String(base64String);
+        return Encoding.UTF8.GetString(data);
+    }
+    private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
+    {
+        // Используем кэш с FileSystemWatcher (читает диск только при первом запросе или изменении)
+        return await localFileCache.GetContentAsync(server.Path, ct);
     }
 
     private async Task<string> ReadLocalV2rayAsync(ServerSource server, CancellationToken ct)
