@@ -1,7 +1,7 @@
 using System.Text.Json;
 using SingBoxServer.Core;
 using SingBoxServer.Logging;
-using SingBoxServer.Models;
+using SingBoxServer.Core.Models;
 using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer.Services.Generators.SingBox;

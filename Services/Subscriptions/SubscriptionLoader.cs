@@ -1,4 +1,4 @@
-using SingBoxServer.Models;
+using SingBoxServer.Core.Models;
 using SingBoxServer.Logging;
 using System.Text;
 using SingBoxServer.Core.Models.Enums;
@@ -6,7 +6,7 @@ using SingBoxServer.Core.Models.Enums;
 namespace SingBoxServer.Services.Subscriptions;
 
 public class SubscriptionLoader(
-    HttpClient httpClient, 
+    HttpClient httpClient,
     ILogger<SubscriptionLoader> logger,
     IRemoteSubscriptionCache remoteCache,
     ILocalFileCache localFileCache) : ISubscriptionLoader
@@ -41,7 +41,7 @@ public class SubscriptionLoader(
     {
         // Определяем TTL: по умолчанию 5 минут, если 0 — бесконечно
         var ttlMinutes = server.CacheTtl ?? 5;
-        
+
         return await remoteCache.GetOrCreateAsync(server.Path, async () =>
         {
             logger.LogDownloadingSubscription("name", server.Path);

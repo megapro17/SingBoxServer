@@ -2,7 +2,7 @@
     "profiles": {
         "Debug": {
             "commandName": "Project",
-            "commandLineArgs": "--SettingsPath C:/Users/megapro17/SourceCode/SingBoxServer/settings.json --TemplatePath C:/Users/megapro17/SourceCode/sing-box/latest_whitelist.json"
+            "commandLineArgs": "--SettingsPath C:/Users/megapro17/SourceCode/SingBoxConfig/config.json --TemplatePath C:/Users/megapro17/SourceCode/sing-box/latest_whitelist.json"
         }
     }
 }

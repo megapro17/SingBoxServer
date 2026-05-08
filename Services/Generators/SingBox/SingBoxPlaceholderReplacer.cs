@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using SingBoxServer.Core;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 

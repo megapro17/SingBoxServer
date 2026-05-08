@@ -1,6 +1,7 @@
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using SingBoxServer.Core;
-using SingBoxServer.Models;
+using SingBoxServer.Core.Models;
 using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Services;
@@ -15,8 +16,7 @@ public class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
-    private readonly string _settingsPath;
-    private readonly string _templatePath;
+    private readonly PlatformPath _paths;
     private UserSettings _settings = null!;
     private SingBoxTemplate _template = null!;
     private FileSystemWatcher? _settingsWatcher;
@@ -27,13 +27,11 @@ public class ConfigurationService : IConfigurationService
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
 
-    public ConfigurationService(IConfiguration config, JsonSerializerOptions options, ILogger<ConfigurationService> logger)
+    public ConfigurationService(IOptions<PlatformPath> config, JsonSerializerOptions options, ILogger<ConfigurationService> logger)
     {
         //_options = options;
         _logger = logger;
-
-        _settingsPath = config["SettingsPath"]!;
-        _templatePath = config["TemplatePath"]!;
+        _paths = config.Value;
         LoadAll();
         SetupWatchers();
     }
@@ -42,13 +40,23 @@ public class ConfigurationService : IConfigurationService
     {
         try
         {
-            var settingsInput = File.ReadAllText(_settingsPath);
-            var templateInput = File.ReadAllText(_templatePath);
-            _settings = JsonSerializer.Deserialize<UserSettings>(settingsInput, AppJsonContext.Default.UserSettings)
-                ?? throw new InvalidOperationException($"Не удалось десериализовать {_settingsPath} — результат null.");
-            _template = JsonSerializer.Deserialize<SingBoxTemplate>(templateInput, AppJsonContext.Default.SingBoxTemplate)
-                ?? throw new InvalidOperationException($"Не удалось десериализовать {_templatePath} — результат null.");
+            var settingsInput = File.ReadAllText(_paths.SettingsPath);
+            _settings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
+                ?? throw new InvalidOperationException($"Ошибка десериализации {_paths.SettingsPath}");
+
+            string templatePath = _settings.BaseConfig.Path ?? "template.json"; // Проверить на существование файла
+            if (!Path.IsPathRooted(templatePath))
+            {
+                templatePath = Path.Combine(Path.GetDirectoryName(_paths.SettingsPath)!, templatePath);
+            }
+            var templateInput = File.ReadAllText(templatePath);
+
+            _settings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
+                ?? throw new InvalidOperationException($"Не удалось десериализовать {settingsInput} — результат null.");
+            _template = JsonSerializer.Deserialize(templateInput, AppJsonContext.Default.SingBoxTemplate)
+                ?? throw new InvalidOperationException($"Не удалось десериализовать {templateInput} — результат null.");
             _logger.LogInformation("Конфигурации успешно загружены.");
+            UpdateTemplateWatcher(templatePath);
         }
         catch (Exception ex)
         {
@@ -59,21 +67,35 @@ public class ConfigurationService : IConfigurationService
 
     private void SetupWatchers()
     {
-        // Debounce: ждём 500мс после последнего события, потом один раз грузим
-        var debounceCallback = new Timer(_ =>
+        _debounceTimer = new Timer(_ => _ = TryReloadAsync(), null, Timeout.Infinite, Timeout.Infinite);
+
+        // Следим за основным файлом настроек
+        var dir = Path.GetDirectoryName(_paths.SettingsPath);
+        if (dir != null && Directory.Exists(dir))
         {
-            if (_disposed) return;
-            _ = TryReloadAsync();
-        }, null, Timeout.Infinite, Timeout.Infinite);
-        _debounceTimer = debounceCallback;
+            _settingsWatcher = new FileSystemWatcher(dir)
+            {
+                Filter = Path.GetFileName(_paths.SettingsPath),
+                EnableRaisingEvents = true
+            };
+            _settingsWatcher.Changed += (s, e) => _debounceTimer.Change(500, Timeout.Infinite);
+        }
+    }
+    private void UpdateTemplateWatcher(string currentTemplatePath)
+    {
+        // Если путь к шаблону изменился, старый вочер удаляем, новый создаем
+        _templateWatcher?.Dispose();
 
-        _settingsWatcher = new FileSystemWatcher(Path.GetDirectoryName(_settingsPath)!) { Filter = "settings.json" };
-        _settingsWatcher.Changed += (s, e) => debounceCallback.Change(500, Timeout.Infinite);
-        _settingsWatcher.EnableRaisingEvents = true;
-
-        _templateWatcher = new FileSystemWatcher(Path.GetDirectoryName(_templatePath)!) { Filter = "latest_whitelist.json" };
-        _templateWatcher.Changed += (s, e) => debounceCallback.Change(500, Timeout.Infinite);
-        _templateWatcher.EnableRaisingEvents = true;
+        var dir = Path.GetDirectoryName(currentTemplatePath);
+        if (dir != null && Directory.Exists(dir))
+        {
+            _templateWatcher = new FileSystemWatcher(dir)
+            {
+                Filter = Path.GetFileName(currentTemplatePath),
+                EnableRaisingEvents = true
+            };
+            _templateWatcher.Changed += (s, e) => _debounceTimer.Change(500, Timeout.Infinite);
+        }
     }
 
     private async Task TryReloadAsync()

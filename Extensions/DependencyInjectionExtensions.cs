@@ -21,13 +21,14 @@ public static class DependencyInjectionExtensions
         //     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         //     TypeInfoResolver = AppJsonContext.Default
         // };
-        
+
         // jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         // services.AddSingleton(jsonOptions);
         services.AddSingleton(AppJsonContext.Default.Options);
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();
         services.AddSingleton<ILocalFileCache, LocalFileCache>();
+        services.ConfigureOptions<PlatformPath.Setup>();
 
         services.AddLogging(builder =>
         {

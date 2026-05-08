@@ -2,15 +2,15 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SingBoxServer.Core.Models.Enums;
 
-namespace SingBoxServer.Models;
+namespace SingBoxServer.Core.Models;
 
 // Корневой файл
 public record UserSettings(
     BaseConfig BaseConfig,
     Dictionary<string, UserProfile> Users,
     Dictionary<string, ServerSource>? Servers = null
-    //Dictionary<string, string> Mappings,
-    //Dictionary<string, RuleProfile> RuleProfiles, // Наши шаблоны
+//Dictionary<string, string> Mappings,
+//Dictionary<string, RuleProfile> RuleProfiles, // Наши шаблоны
 );
 
 public record BaseConfig(string Salt, string Type, string Path);
@@ -72,9 +72,9 @@ public record UserProfile(
 );
 
 public record ServerSource(
-    List<string> Tags, 
-    ServerType Type, 
-    ServerFormat Format, 
-    string Path, 
+    List<string> Tags,
+    ServerType Type,
+    ServerFormat Format,
+    string Path,
     int? CacheTtl = null // Минуты. 0 = бесконечно (до перезапуска). null = 5 минут (по умолчанию).
 );

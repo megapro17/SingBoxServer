@@ -15,19 +15,21 @@ public partial class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateSlimBuilder(args);
-        var settingsPath = builder.Configuration["SettingsPath"];
-        var templatePath = builder.Configuration["TemplatePath"];
-
-        if (string.IsNullOrEmpty(settingsPath) || string.IsNullOrEmpty(templatePath))
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("ОШИБКА: Необходимые параметры запуска отсутствуют.");
-            Console.ResetColor();
-            Console.WriteLine("Использование: SingBoxServer --SettingsPath=settings.json --TemplatePath=template.json");
-            Environment.Exit(1);
-        }
         builder.Services.AddApplicationServices();
+
+        // var settingsPath = builder.Configuration["SettingsPath"];
+        // var templatePath = builder.Configuration["TemplatePath"];
+
+        // if (string.IsNullOrEmpty(settingsPath) || string.IsNullOrEmpty(templatePath))
+        // {
+        //     Console.ForegroundColor = ConsoleColor.Red;
+        //     Console.WriteLine("ОШИБКА: Необходимые параметры запуска отсутствуют.");
+        //     Console.ResetColor();
+        //     Console.WriteLine("Использование: SingBoxServer --SettingsPath=settings.json --TemplatePath=template.json");
+        //     Environment.Exit(1);
+        // }
         var app = builder.Build();
+        app.Services.GetRequiredService<IConfigurationService>();
 
         app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, JsonSerializerOptions options, ILogger<Program> logger) =>
         {

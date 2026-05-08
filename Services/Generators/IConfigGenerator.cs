@@ -1,4 +1,4 @@
-using SingBoxServer.Models;
+using SingBoxServer.Core.Models;
 
 namespace SingBoxServer.Services.Generators;
 
