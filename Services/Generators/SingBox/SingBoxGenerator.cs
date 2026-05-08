@@ -117,7 +117,7 @@ public partial class SingBoxGenerator(
         return finalOutbounds;
     }
 
-    private List<OutboundNode> ExtractProxies(string rawContent)
+    private static List<OutboundNode> ExtractProxies(string rawContent)
     {
         var content = rawContent.TrimStart();
 
@@ -149,14 +149,32 @@ public partial class SingBoxGenerator(
 
     private static void RenameProxies(List<OutboundNode> proxies, string name, List<string>? tags = null)
     {
+        bool hasDuplicates = tags != null && tags.Distinct().Count() != tags.Count;
+        bool hasInsufficientTags = tags == null || tags.Count < proxies.Count;
+        bool needsNumbering = hasDuplicates || hasInsufficientTags;
+
         for (int i = 0; i < proxies.Count; i++)
         {
             var node = proxies[i];
-            string number = (i + 1).ToString("D2");
-            string serverName = (tags?.Count > i) ? tags[i] : name;
-            node.Tag = $"{serverName} {number}";
+
+            string serverName;
+            if (tags == null)
+            {
+                serverName = Constants.ProxyUnknown;
+            }
+            else
+            {
+                serverName = i < tags.Count ? tags[i] : name;
+            }
+            if (needsNumbering)
+            {
+                string number = (i + 1).ToString("D2");
+                node.Tag = $"{serverName} {number}";
+            }
+            else
+            {
+                node.Tag = serverName;
+            }
         }
     }
-
-
 }
