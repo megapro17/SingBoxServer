@@ -119,14 +119,26 @@ public partial class SingBoxGenerator(
 
     private static List<OutboundNode> ExtractProxies(string rawContent)
     {
-        var content = rawContent.TrimStart();
-
-        if (content.StartsWith("vless://", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var nodes = new List<OutboundNode>();
-            var lines = content.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            var parsedNodes = JsonSerializer.Deserialize(rawContent, AppJsonContext.Default.SingBoxTemplate);
+            if (parsedNodes?.Outbounds == null)
+                return [];
 
-            foreach (var line in lines)
+            return [.. parsedNodes.Outbounds.Where(o => o.Type is not ("selector" or "urltest" or "direct" or "block" or "dns"))];
+
+        }
+        catch
+        {
+        }
+
+        var content = rawContent.TrimStart();
+        var nodes = new List<OutboundNode>();
+        var lines = content.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("vless://", StringComparison.OrdinalIgnoreCase))
             {
                 var parsedNode = SingBoxLinkParser.Parse(line, AppJsonContext.Default.Options);
                 if (parsedNode != null)
@@ -134,17 +146,8 @@ public partial class SingBoxGenerator(
                     nodes.Add(parsedNode);
                 }
             }
-            return nodes;
         }
-        else
-        {
-            var parsedNodes = JsonSerializer.Deserialize(rawContent, AppJsonContext.Default.SingBoxTemplate);
-
-            if (parsedNodes?.Outbounds == null)
-                return [];
-
-            return [.. parsedNodes.Outbounds.Where(o => o.Type is not ("selector" or "urltest" or "direct" or "block" or "dns"))];
-        }
+        return nodes;
     }
 
     private static void RenameProxies(List<OutboundNode> proxies, string name, List<string>? tags = null)
