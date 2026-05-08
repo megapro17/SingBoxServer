@@ -24,4 +24,18 @@
     <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
   </PropertyGroup>
 
+<!-- Настройки исключительно для кросс-компиляции linux-musl-arm64 -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-musl-arm64'">
+    <LinkerFlavor>lld</LinkerFlavor>
+    <ObjCopyName>aarch64-linux-musl-objcopy</ObjCopyName>
+  </PropertyGroup>
+
+  <!-- Явно передаем флаги линковщику Clang -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-musl-arm64'">
+    <LinkerArg Include="--sysroot=/opt/aarch64-linux-musl-cross/aarch64-linux-musl" />
+    <LinkerArg Include="--gcc-toolchain=/opt/aarch64-linux-musl-cross" />
+    <LinkerArg Include="-L/opt/aarch64-linux-musl-cross/lib/gcc/aarch64-linux-musl/11.2.1" />
+    <LinkerArg Include="-B/opt/aarch64-linux-musl-cross/lib/gcc/aarch64-linux-musl/11.2.1" />
+  </ItemGroup>
+
 </Project>
