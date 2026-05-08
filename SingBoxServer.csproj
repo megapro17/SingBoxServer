@@ -16,7 +16,7 @@
     <EventSourceSupport>false</EventSourceSupport>
     <MetricsSupport>false</MetricsSupport>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
-    <StackTraceSupport>false</StackTraceSupport>
+    <!-- <StackTraceSupport>false</StackTraceSupport> -->
     <DebuggerSupport>false</DebuggerSupport>
     <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
     <ServerGarbageCollection>false</ServerGarbageCollection>

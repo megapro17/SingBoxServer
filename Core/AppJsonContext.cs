@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 using SingBoxServer.Core.Models;
 using SingBoxServer.Services.Generators.SingBox;
 
@@ -14,6 +15,7 @@ namespace SingBoxServer.Core;
 [JsonSerializable(typeof(UserSettings))]
 [JsonSerializable(typeof(SingBoxTemplate))]
 [JsonSerializable(typeof(OutboundNode))]
+[JsonSerializable(typeof(ProblemDetails))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }
