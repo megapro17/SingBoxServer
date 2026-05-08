@@ -24,6 +24,7 @@ public partial class SingBoxGenerator(
         // Создаем глубокую копию шаблона и применяем замены
         var route = JsonPlaceholderReplacer.ProcessNode(template.Route);
         var dns = JsonPlaceholderReplacer.ProcessNode(template.Dns);
+        var httpclients = JsonPlaceholderReplacer.ProcessNode(template.HttpClients);
 
         // Применяем кастомные правила пользователя
         if (user.CustomRules is { } customRules)
@@ -38,6 +39,7 @@ public partial class SingBoxGenerator(
             Route = route,
             Dns = dns,
             Experimental = user.CustomRules?.Experimental ?? template.Experimental,
+            HttpClients = httpclients,
             Inbounds = user.CustomRules?.Inbounds ?? template.Inbounds
         };
     }

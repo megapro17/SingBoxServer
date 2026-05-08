@@ -10,6 +10,7 @@ public record SingBoxTemplate(
     [property: JsonPropertyName("ntp")] JsonNode? Ntp = null,
     [property: JsonPropertyName("certificate")] JsonNode? Certificate = null,
     [property: JsonPropertyName("certificate_providers")] JsonArray? CertificateProviders = null,
+    [property: JsonPropertyName("http_clients")] JsonNode? HttpClients = null,
     [property: JsonPropertyName("endpoints")] JsonArray? Endpoints = null,
     [property: JsonPropertyName("inbounds")] JsonArray? Inbounds = null,
     // В будущем, когда захочешь строго типизировать Outbounds, поменяешь JsonArray на List<Outbound>
