@@ -13,18 +13,10 @@ public static class DependencyInjectionExtensions
     // Ключевое слово "this" делает этот метод расширением для IServiceCollection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // var jsonOptions = new JsonSerializerOptions
-        // {
-        //     WriteIndented = true,
-        //     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        //     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        //     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        //     TypeInfoResolver = AppJsonContext.Default
-        // };
-
-        // jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
-        // services.AddSingleton(jsonOptions);
-        services.AddSingleton(AppJsonContext.Default.Options);
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default);
+        });
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();
         services.AddSingleton<ILocalFileCache, LocalFileCache>();
@@ -34,11 +26,12 @@ public static class DependencyInjectionExtensions
         {
             builder.AddSimpleConsole(options =>
             {
-                options.IncludeScopes = true;
+                options.IncludeScopes = false;
                 options.SingleLine = true;
                 options.TimestampFormat = "[HH:mm:ss] ";
             });
-            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.SetMinimumLevel(LogLevel.Information);
+            builder.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
         });
 
         services.AddHttpClient<ISubscriptionLoader, SubscriptionLoader>();

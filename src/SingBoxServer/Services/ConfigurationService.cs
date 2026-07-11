@@ -21,9 +21,8 @@ public class ConfigurationService : IConfigurationService
     private SingBoxTemplate _template = null!;
     private FileSystemWatcher? _settingsWatcher;
     private FileSystemWatcher? _templateWatcher;
+    private string? _currentTemplatePath;
     private Timer? _debounceTimer;
-    private bool _disposed;
-
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
 
@@ -40,21 +39,22 @@ public class ConfigurationService : IConfigurationService
     {
         try
         {
-            var settingsInput = File.ReadAllText(_paths.SettingsPath);
-            _settings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
+            var settingsInput = FileHelper.ReadAllTextSafe(_paths.SettingsPath);
+            var newSettings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
                 ?? throw new InvalidOperationException($"Ошибка десериализации {_paths.SettingsPath}");
 
-            string templatePath = _settings.BaseConfig.Path ?? "template.json"; // Проверить на существование файла
+            string templatePath = newSettings.BaseConfig.Path ?? "template.json"; // Проверить на существование файла
             if (!Path.IsPathRooted(templatePath))
             {
                 templatePath = Path.Combine(Path.GetDirectoryName(_paths.SettingsPath)!, templatePath);
             }
-            var templateInput = File.ReadAllText(templatePath);
-
-            _settings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
-                ?? throw new InvalidOperationException($"Не удалось десериализовать {settingsInput} — результат null.");
-            _template = JsonSerializer.Deserialize(templateInput, AppJsonContext.Default.SingBoxTemplate)
+            
+            var templateInput = FileHelper.ReadAllTextSafe(templatePath);
+            var newTemplate = JsonSerializer.Deserialize(templateInput, AppJsonContext.Default.SingBoxTemplate)
                 ?? throw new InvalidOperationException($"Не удалось десериализовать {templateInput} — результат null.");
+            
+            _settings = newSettings;
+            _template = newTemplate;
             _logger.LogInformation("Конфигурации успешно загружены.");
             UpdateTemplateWatcher(templatePath);
         }
@@ -78,11 +78,18 @@ public class ConfigurationService : IConfigurationService
                 Filter = Path.GetFileName(_paths.SettingsPath),
                 EnableRaisingEvents = true
             };
-            _settingsWatcher.Changed += (s, e) => _debounceTimer.Change(500, Timeout.Infinite);
+            _settingsWatcher.Changed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
+            _settingsWatcher.Created += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
+            _settingsWatcher.Renamed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
         }
     }
     private void UpdateTemplateWatcher(string currentTemplatePath)
     {
+        if (_currentTemplatePath == currentTemplatePath && _templateWatcher != null)
+            return; // Путь не изменился, ничего не делаем
+
+        _currentTemplatePath = currentTemplatePath;
+
         // Если путь к шаблону изменился, старый вочер удаляем, новый создаем
         _templateWatcher?.Dispose();
 
@@ -94,7 +101,9 @@ public class ConfigurationService : IConfigurationService
                 Filter = Path.GetFileName(currentTemplatePath),
                 EnableRaisingEvents = true
             };
-            _templateWatcher.Changed += (s, e) => _debounceTimer.Change(500, Timeout.Infinite);
+            _templateWatcher.Changed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
+            _templateWatcher.Created += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
+            _templateWatcher.Renamed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
         }
     }
 
@@ -118,8 +127,6 @@ public class ConfigurationService : IConfigurationService
 
     public void Dispose()
     {
-        _disposed = true;
-
         // Отключаем события до dispose — иначе колбэк может сработать на умирающем объекте
         _settingsWatcher?.EnableRaisingEvents = false;
         _templateWatcher?.EnableRaisingEvents = false;
@@ -130,5 +137,7 @@ public class ConfigurationService : IConfigurationService
         _settingsWatcher?.Dispose();
         _templateWatcher?.Dispose();
         _reloadLock.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 }

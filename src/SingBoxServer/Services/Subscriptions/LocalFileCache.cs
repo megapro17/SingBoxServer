@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SingBoxServer.Core;
 
 namespace SingBoxServer.Services.Subscriptions;
 
@@ -35,7 +36,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
 
         // Иначе читаем с диска и ставим слежение
         _logger.LogDebug("Локальный файл загружен из диска: {Path}", path);
-        var content = await File.ReadAllTextAsync(path, ct);
+        var content = await FileHelper.ReadAllTextSafeAsync(path, ct);
         
         // Сохраняем в кэш
         _contentCache[path] = content;
@@ -62,6 +63,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
 
         watcher.Changed += (s, e) => OnFileChanged(e.FullPath);
         watcher.Created += (s, e) => OnFileChanged(e.FullPath);
+        watcher.Renamed += (s, e) => OnFileChanged(e.FullPath);
         watcher.EnableRaisingEvents = true;
 
         // Пытаемся добавить в словарь. Если уже добавили другой поток — просто удаляем этот дубликат
@@ -86,11 +88,11 @@ public class LocalFileCache : ILocalFileCache, IDisposable
             // Читаем синхронно, так как это событие файловой системы
             try
             {
-                _contentCache[fullPath] = File.ReadAllText(fullPath);
+                _contentCache[fullPath] = FileHelper.ReadAllTextSafe(fullPath);
             }
-            catch (IOException)
+            catch (Exception ex)
             {
-                // Файл временно заблокирован (например, идет запись). Игнорируем.
+                _logger.LogError(ex, "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше.", fullPath);
             }
         }
     }
@@ -103,5 +105,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
             watcher.Dispose();
         }
         _directoryWatchers.Clear();
+
+        GC.SuppressFinalize(this);
     }
 }

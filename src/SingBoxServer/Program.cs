@@ -17,21 +17,10 @@ public partial class Program
         var builder = WebApplication.CreateSlimBuilder(args);
         builder.Services.AddApplicationServices();
 
-        // var settingsPath = builder.Configuration["SettingsPath"];
-        // var templatePath = builder.Configuration["TemplatePath"];
-
-        // if (string.IsNullOrEmpty(settingsPath) || string.IsNullOrEmpty(templatePath))
-        // {
-        //     Console.ForegroundColor = ConsoleColor.Red;
-        //     Console.WriteLine("ОШИБКА: Необходимые параметры запуска отсутствуют.");
-        //     Console.ResetColor();
-        //     Console.WriteLine("Использование: SingBoxServer --SettingsPath=settings.json --TemplatePath=template.json");
-        //     Environment.Exit(1);
-        // }
         var app = builder.Build();
         app.Services.GetRequiredService<IConfigurationService>();
 
-        app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, JsonSerializerOptions options, ILogger<Program> logger) =>
+        app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, ILogger<Program> logger) =>
         {
             var salt = configService.Settings.BaseConfig.Salt;
             var expectedHashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
@@ -57,9 +46,8 @@ public partial class Program
                 logger.LogInformation("Генерируем конфиг на лету для юзера {Username}", username);
                 var finalConfig = await generator.GenerateAsync(userProfile);
 
-                // Магия .NET: метод Results.Json сам превратит объект в строку, 
-                // применит твои options (snake_case и тд) и добавит заголовок Content-Type: application/json
-                return Results.Json(finalConfig, AppJsonContext.Default);
+                // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
+                return Results.Ok(finalConfig);
             }
             catch (Exception ex)
             {
