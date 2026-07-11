@@ -1,6 +1,6 @@
 namespace SingBoxServer.Core.Models.Enums;
 
-public enum ServerFormat
+internal enum ServerFormat
 {
     SingBox,
     V2ray,

@@ -6,13 +6,13 @@ namespace SingBoxServer.Services.Subscriptions;
 /// <summary>
 /// Простой кэш для удалённых подписок с поддержкой TTL и полной очистки.
 /// </summary>
-public interface IRemoteSubscriptionCache
+internal interface IRemoteSubscriptionCache
 {
     Task<string> GetOrCreateAsync(string key, Func<Task<string>> factory, int ttlMinutes);
     void Clear();
 }
 
-public class RemoteSubscriptionCache : IRemoteSubscriptionCache
+internal sealed class RemoteSubscriptionCache : IRemoteSubscriptionCache
 {
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private readonly ILogger<RemoteSubscriptionCache> _logger;
@@ -34,7 +34,7 @@ public class RemoteSubscriptionCache : IRemoteSubscriptionCache
 
         // Иначе загружаем
         _logger.LogCacheSkippedLoading(key);
-        var value = await factory();
+        var value = await factory().ConfigureAwait(false);
         
         var expiration = ttlMinutes > 0 ? now.AddMinutes(ttlMinutes) : (DateTimeOffset?)null;
         _cache[key] = new CacheEntry(value, expiration);

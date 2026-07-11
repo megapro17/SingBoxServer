@@ -2,10 +2,10 @@ using Microsoft.Extensions.Options;
 
 namespace SingBoxServer.Core;
 
-public class PlatformPath
+internal sealed class PlatformPath
 {
     public string SettingsPath { get; set; } = string.Empty;
-    public class Setup(IConfiguration config) : IConfigureOptions<PlatformPath>
+    internal sealed class Setup(IConfiguration config) : IConfigureOptions<PlatformPath>
     {
         public void Configure(PlatformPath options)
         {

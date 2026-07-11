@@ -3,7 +3,7 @@ using SingBoxServer.Core.Models.Enums;
 namespace SingBoxServer.Logging;
 
 // (Trace -> Debug -> Information -> Warning -> Error -> Critical)
-public static partial class SharedLogMessages
+internal static partial class SharedLogMessages
 {
     [LoggerMessage(Level = LogLevel.Warning, Message = "В настройках не найдено ни одного пользователя.")]
     public static partial void LogSettingsHasNoUsers(this ILogger logger);

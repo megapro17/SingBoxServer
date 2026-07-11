@@ -7,13 +7,13 @@ using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Services;
 
-public interface IConfigurationService : IDisposable
+internal interface IConfigurationService : IDisposable
 {
     UserSettings Settings { get; }
     SingBoxTemplate Template { get; }
 }
 
-public class ConfigurationService : IConfigurationService
+internal sealed class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
@@ -110,7 +110,7 @@ public class ConfigurationService : IConfigurationService
 
     private async Task TryReloadAsync()
     {
-        var locked = await _reloadLock.WaitAsync(TimeSpan.Zero);
+        var locked = await _reloadLock.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
         if (!locked)
         {
             _logger.LogDuplicateReloadSkipped();

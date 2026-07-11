@@ -6,7 +6,7 @@ using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 
-public partial class SingBoxGenerator(
+internal sealed partial class SingBoxGenerator(
     ILogger<SingBoxGenerator> logger,
     ISubscriptionLoader loader,
     IConfigurationService configService) : IConfigGenerator<SingBoxTemplate>
@@ -19,7 +19,7 @@ public partial class SingBoxGenerator(
         var servers = configService.Settings.Servers;
 
         // Собираем outbounds (с учетом DPI из кастомных правил)
-        var outbounds = await BuildOutboundsAsync(user, servers, user.CustomRules);
+        var outbounds = await BuildOutboundsAsync(user, servers, user.CustomRules).ConfigureAwait(false);
 
         // Создаем глубокую копию шаблона и применяем замены
         var route = JsonPlaceholderReplacer.ProcessNode(template.Route);
@@ -63,7 +63,7 @@ public partial class SingBoxGenerator(
 
             if (server != null)
             {
-                var rawContent = await loader.LoadContentAsync(server);
+                var rawContent = await loader.LoadContentAsync(server).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(rawContent)) continue;
 
                 var extracted = ExtractProxies(rawContent);

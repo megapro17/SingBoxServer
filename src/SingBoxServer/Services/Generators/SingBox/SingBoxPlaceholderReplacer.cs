@@ -4,7 +4,7 @@ using SingBoxServer.Core;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 
-public static class JsonPlaceholderReplacer
+internal static class JsonPlaceholderReplacer
 {
     public static JsonNode? ProcessNode(JsonNode? node)
     {

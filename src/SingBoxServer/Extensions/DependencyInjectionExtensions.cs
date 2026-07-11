@@ -8,7 +8,7 @@ using SingBoxServer.Core;
 
 namespace SingBoxServer.Extensions;
 
-public static class DependencyInjectionExtensions
+internal static class DependencyInjectionExtensions
 {
     // Ключевое слово "this" делает этот метод расширением для IServiceCollection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)

@@ -1,6 +1,6 @@
 namespace SingBoxServer.Core.Models.Enums;
 
-public enum ServerType
+internal enum ServerType
 {
     Local,
     Remote,

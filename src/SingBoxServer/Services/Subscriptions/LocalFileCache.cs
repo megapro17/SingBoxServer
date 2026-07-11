@@ -7,12 +7,12 @@ namespace SingBoxServer.Services.Subscriptions;
 /// <summary>
 /// Кэш для локальных файлов. Читает файл один раз и следит за изменениями через FileSystemWatcher.
 /// </summary>
-public interface ILocalFileCache
+internal interface ILocalFileCache
 {
     Task<string> GetContentAsync(string path, CancellationToken ct = default);
 }
 
-public class LocalFileCache : ILocalFileCache, IDisposable
+internal sealed class LocalFileCache : ILocalFileCache, IDisposable
 {
     private readonly ILogger<LocalFileCache> _logger;
 
@@ -37,7 +37,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
 
         // Иначе читаем с диска и ставим слежение
         _logger.LogLocalFileLoadedFromDisk(path);
-        var content = await FileHelper.ReadAllTextSafeAsync(path, ct);
+        var content = await FileHelper.ReadAllTextSafeAsync(path, ct).ConfigureAwait(false);
         
         // Сохраняем в кэш
         _contentCache[path] = content;

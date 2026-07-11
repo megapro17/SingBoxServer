@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 
-public static class SingBoxRuleInjector
+internal static class SingBoxRuleInjector
 {
     /// <summary>
     /// Вставляет пользовательские правила маршрутизации в шаблон.

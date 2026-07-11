@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace SingBoxServer.Services.Generators.SingBox;
 
-public record SingBoxTemplate(
+internal sealed record SingBoxTemplate(
     [property: JsonPropertyName("log")] JsonNode? Log = null,
     [property: JsonPropertyName("dns")] JsonNode? Dns = null,
     [property: JsonPropertyName("ntp")] JsonNode? Ntp = null,
@@ -28,7 +28,7 @@ public record SingBoxTemplate(
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
-public record OutboundNode
+internal sealed record OutboundNode
 {
     [JsonPropertyName("type")]
     public string Type { get; set; } = string.Empty;

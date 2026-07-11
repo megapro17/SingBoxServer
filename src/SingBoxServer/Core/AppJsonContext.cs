@@ -16,6 +16,6 @@ namespace SingBoxServer.Core;
 [JsonSerializable(typeof(SingBoxTemplate))]
 [JsonSerializable(typeof(OutboundNode))]
 [JsonSerializable(typeof(ProblemDetails))]
-internal partial class AppJsonContext : JsonSerializerContext
+internal sealed partial class AppJsonContext : JsonSerializerContext
 {
 }

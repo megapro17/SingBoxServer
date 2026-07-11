@@ -2,7 +2,7 @@ using SingBoxServer.Core.Models;
 
 namespace SingBoxServer.Services.Generators;
 
-public interface IConfigGenerator<T>
+internal interface IConfigGenerator<T>
 {
     Task<T> GenerateAsync(UserProfile user);
 }

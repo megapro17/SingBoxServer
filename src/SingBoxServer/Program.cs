@@ -11,7 +11,7 @@ using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer;
 
-public partial class Program
+internal sealed partial class Program
 {
     public static void Main(string[] args)
     {
@@ -45,7 +45,7 @@ public partial class Program
             try
             {
                 logger.LogGeneratingConfigForUser(username);
-                var finalConfig = await generator.GenerateAsync(userProfile);
+                var finalConfig = await generator.GenerateAsync(userProfile).ConfigureAwait(false);
 
                 // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
                 return Results.Ok(finalConfig);

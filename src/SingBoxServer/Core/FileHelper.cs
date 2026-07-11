@@ -2,7 +2,7 @@ using System.Text;
 
 namespace SingBoxServer.Core;
 
-public static class FileHelper
+internal static class FileHelper
 {
     /// <summary>
     /// Асинхронно читает файл с поддержкой FileShare.ReadWrite и механизмом повторных попыток (Retry).
@@ -19,14 +19,14 @@ public static class FileHelper
             {
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
-                return await reader.ReadToEndAsync(ct);
+                return await reader.ReadToEndAsync(ct).ConfigureAwait(false);
             }
             catch (IOException)
             {
                 if (i == maxRetries - 1)
                     throw; // Выбрасываем исключение на последней попытке
 
-                await Task.Delay(delayMs, ct);
+                await Task.Delay(delayMs, ct).ConfigureAwait(false);
             }
         }
 

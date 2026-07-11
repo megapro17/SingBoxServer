@@ -5,7 +5,7 @@ using SingBoxServer.Core.Models.Enums;
 namespace SingBoxServer.Core.Models;
 
 // Корневой файл
-public record UserSettings(
+internal sealed record UserSettings(
     BaseConfig BaseConfig,
     Dictionary<string, UserProfile> Users,
     Dictionary<string, ServerSource>? Servers = null
@@ -13,12 +13,12 @@ public record UserSettings(
 //Dictionary<string, RuleProfile> RuleProfiles, // Наши шаблоны
 );
 
-public record BaseConfig(string Salt, string Type, string Path);
+internal sealed record BaseConfig(string Salt, string Type, string Path);
 
 /// <summary>
 /// Кастомные правила пользователя для инъекции в шаблон sing-box.
 /// </summary>
-public record RuleProfile
+internal sealed record RuleProfile
 {
     /// <summary>
     /// Включить DPI bypass (добавляет socks-прокси на 127.0.0.1:1080)
@@ -63,7 +63,7 @@ public record RuleProfile
 }
 
 // Профиль пользователя
-public record UserProfile(
+internal sealed record UserProfile(
     bool UseSharedServers = true,
     string? Profile = "standard", // Имя шаблона
     RuleProfile? CustomRules = null,
@@ -71,7 +71,7 @@ public record UserProfile(
     List<string>? Outbounds = null
 );
 
-public record ServerSource(
+internal sealed record ServerSource(
     List<string> Tags,
     ServerType Type,
     ServerFormat Format,

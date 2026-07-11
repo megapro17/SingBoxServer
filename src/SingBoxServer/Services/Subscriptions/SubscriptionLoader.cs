@@ -5,7 +5,7 @@ using SingBoxServer.Core.Models.Enums;
 
 namespace SingBoxServer.Services.Subscriptions;
 
-public class SubscriptionLoader(
+internal sealed class SubscriptionLoader(
     HttpClient httpClient,
     ILogger<SubscriptionLoader> logger,
     IRemoteSubscriptionCache remoteCache,
@@ -16,8 +16,8 @@ public class SubscriptionLoader(
         // Шаг 1: Получаем "сырые" данные в зависимости от ИСТОЧНИКА (Type)
         string rawContent = server.Type switch
         {
-            ServerType.Local => await localFileCache.GetContentAsync(server.Path, ct),
-            ServerType.Remote => await DownloadRemoteFileAsync(server, ct),
+            ServerType.Local => await localFileCache.GetContentAsync(server.Path, ct).ConfigureAwait(false),
+            ServerType.Remote => await DownloadRemoteFileAsync(server, ct).ConfigureAwait(false),
             ServerType.Inline => server.Path,
             _ => throw new NotSupportedException($"Тип источника {server.Type} не поддерживается")
         };
@@ -39,8 +39,8 @@ public class SubscriptionLoader(
         return await remoteCache.GetOrCreateAsync(server.Path, async () =>
         {
             logger.LogDownloadingSubscription("name", server.Path);
-            return await httpClient.GetStringAsync(server.Path, ct) ?? throw new InvalidOperationException("Пустой ответ от сервера");
-        }, ttlMinutes);
+            return await httpClient.GetStringAsync(new Uri(server.Path), ct).ConfigureAwait(false) ?? throw new InvalidOperationException("Пустой ответ от сервера");
+        }, ttlMinutes).ConfigureAwait(false);
     }
 
     private static string DecodeV2rayBase64(string base64String)
@@ -55,12 +55,12 @@ public class SubscriptionLoader(
     private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
     {
         // Используем кэш с FileSystemWatcher (читает диск только при первом запросе или изменении)
-        return await localFileCache.GetContentAsync(server.Path, ct);
+        return await localFileCache.GetContentAsync(server.Path, ct).ConfigureAwait(false);
     }
 
     private async Task<string> ReadLocalV2rayAsync(ServerSource server, CancellationToken ct)
     {
-        var base64String = await ReadLocalFileAsync(server, ct);
+        var base64String = await ReadLocalFileAsync(server, ct).ConfigureAwait(false);
         base64String = base64String.Trim();
         byte[] data = Convert.FromBase64String(base64String);
         string decodedString = Encoding.UTF8.GetString(data);

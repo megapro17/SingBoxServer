@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using SingBoxServer.Core;
 
 namespace SingBoxServer.Services.Generators.SingBox;
-public static class SingBoxLinkParser
+internal static class SingBoxLinkParser
 {
     public static OutboundNode? Parse(string link, JsonSerializerOptions jsonOptions)
     {
