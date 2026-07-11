@@ -81,4 +81,7 @@ internal static partial class SharedLogMessages
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удалённых подписок очищен.")]
     public static partial void LogRemoteCacheCleared(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Не удалось прочитать версию ОС из /etc/os-release")]
+    public static partial void LogFailedToReadOsRelease(this ILogger logger, Exception ex);
 }

@@ -1,11 +1,13 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SingBoxServer.Logging;
 
 namespace SingBoxServer.Core;
 
 internal sealed class PlatformPath
 {
     public string SettingsPath { get; set; } = string.Empty;
-    internal sealed class Setup(IConfiguration config) : IConfigureOptions<PlatformPath>
+    internal sealed class Setup(IConfiguration config, ILogger<Setup> logger) : IConfigureOptions<PlatformPath>
     {
         public void Configure(PlatformPath options)
         {
@@ -24,7 +26,7 @@ internal sealed class PlatformPath
             options.SettingsPath = fullPath;
         }
 
-        private static string GetDefaultConfigDirectory()
+        private string GetDefaultConfigDirectory()
         {
             return Environment.OSVersion.Platform switch
             {
@@ -35,7 +37,7 @@ internal sealed class PlatformPath
             };
         }
 
-        private static string GetLinuxConfigDirectory()
+        private string GetLinuxConfigDirectory()
         {
             if (IsOpenWrt())
             {
@@ -44,7 +46,7 @@ internal sealed class PlatformPath
             // Если XDG_CONFIG_HOME задан, .NET сам его подхватит через SpecialFolder.UserProfile + .config
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", Constants.AppName);
         }
-        private static bool IsOpenWrt()
+        private bool IsOpenWrt()
         {
             if (File.Exists("/etc/openwrt_release")) return true;
             const string osReleasePath = "/etc/os-release";
@@ -60,7 +62,10 @@ internal sealed class PlatformPath
 
                     if (tags.Contains("openwrt")) return true;
                 }
-                catch { } //log
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogFailedToReadOsRelease(ex);
+                }
             return false;
         }
 
