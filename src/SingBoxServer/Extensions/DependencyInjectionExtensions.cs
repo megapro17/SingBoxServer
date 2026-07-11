@@ -1,10 +1,8 @@
+using SingBoxServer.Core;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using SingBoxServer.Services.Subscriptions;
 using SingBoxServer.Services.Generators.SingBox;
-using SingBoxServer.Core;
+using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer.Extensions;
 
