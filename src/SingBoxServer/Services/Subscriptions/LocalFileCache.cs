@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using SingBoxServer.Core;
+using SingBoxServer.Logging;
 
 namespace SingBoxServer.Services.Subscriptions;
 
@@ -35,7 +36,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
         }
 
         // Иначе читаем с диска и ставим слежение
-        _logger.LogDebug("Локальный файл загружен из диска: {Path}", path);
+        _logger.LogLocalFileLoadedFromDisk(path);
         var content = await FileHelper.ReadAllTextSafeAsync(path, ct);
         
         // Сохраняем в кэш
@@ -73,7 +74,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
         }
         else
         {
-            _logger.LogDebug("Запущено слежение за директорией: {Directory}", directory);
+            _logger.LogStartedWatchingDirectory(directory);
         }
     }
 
@@ -84,7 +85,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
         // Нормализуем путь, чтобы он совпадал с ключом в кэше
         if (_contentCache.ContainsKey(fullPath))
         {
-            _logger.LogDebug("Обновлен локальный файл в кэше: {Path}", fullPath);
+            _logger.LogLocalFileUpdatedInCache(fullPath);
             // Читаем синхронно, так как это событие файловой системы
             try
             {
@@ -92,7 +93,7 @@ public class LocalFileCache : ILocalFileCache, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше.", fullPath);
+                _logger.LogFailedToUpdateLocalFileInCache(ex, fullPath);
             }
         }
     }

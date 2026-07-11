@@ -34,4 +34,51 @@ public static partial class SharedLogMessages
     // 3. Общая ошибка скачивания (с передачей Exception)
     [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка при загрузке данных из {Url}")]
     public static partial void LogDownloadError(this ILogger logger, string url, Exception ex);
+
+    // --- Автоматически сгенерированные при переносе ---
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Попытка несанкционированного доступа к конфигу: {Username}")]
+    public static partial void LogUnauthorizedConfigAccess(this ILogger logger, string username);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Генерируем конфиг на лету для юзера {Username}")]
+    public static partial void LogGeneratingConfigForUser(this ILogger logger, string username);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Критический сбой при генерации для {Username}")]
+    public static partial void LogCriticalGenerationFailure(this ILogger logger, Exception ex, string username);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удаленных подписок очищен по запросу.")]
+    public static partial void LogRemoteCacheClearedByRequest(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Конфигурации успешно загружены.")]
+    public static partial void LogConfigurationsLoadedSuccessfully(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка загрузки конфигураций.")]
+    public static partial void LogConfigurationLoadError(this ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Пропущен дублирующий reload — предыдущий ещё выполняется.")]
+    public static partial void LogDuplicateReloadSkipped(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Начинаем генерацию конфига")]
+    public static partial void LogStartingConfigGeneration(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Outbound: {Tag}")]
+    public static partial void LogOutboundTag(this ILogger logger, string tag);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Локальный файл загружен из диска: {Path}")]
+    public static partial void LogLocalFileLoadedFromDisk(this ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Запущено слежение за директорией: {Directory}")]
+    public static partial void LogStartedWatchingDirectory(this ILogger logger, string directory);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Обновлен локальный файл в кэше: {Path}")]
+    public static partial void LogLocalFileUpdatedInCache(this ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше.")]
+    public static partial void LogFailedToUpdateLocalFileInCache(this ILogger logger, Exception ex, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Кэш пропущен, загружаем: {Key}")]
+    public static partial void LogCacheSkippedLoading(this ILogger logger, string key);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удалённых подписок очищен.")]
+    public static partial void LogRemoteCacheCleared(this ILogger logger);
 }

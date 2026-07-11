@@ -13,7 +13,7 @@ public partial class SingBoxGenerator(
 {
     public async Task<SingBoxTemplate> GenerateAsync(UserProfile user)
     {
-        logger.LogInformation("Начинаем генерацию конфига");
+        logger.LogStartingConfigGeneration();
 
         var template = configService.Template;
         var servers = configService.Settings.Servers;
@@ -111,7 +111,7 @@ public partial class SingBoxGenerator(
 
         foreach (var outbound in finalOutbounds)
         {
-            logger.LogInformation("Outbound: {Tag}", outbound.Tag);
+            logger.LogOutboundTag(outbound.Tag ?? string.Empty);
         }
 
         return finalOutbounds;

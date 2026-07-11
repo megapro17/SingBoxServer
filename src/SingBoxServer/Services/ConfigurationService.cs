@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using SingBoxServer.Core;
 using SingBoxServer.Core.Models;
+using SingBoxServer.Logging;
 using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Services;
@@ -55,12 +56,12 @@ public class ConfigurationService : IConfigurationService
             
             _settings = newSettings;
             _template = newTemplate;
-            _logger.LogInformation("Конфигурации успешно загружены.");
+            _logger.LogConfigurationsLoadedSuccessfully();
             UpdateTemplateWatcher(templatePath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка загрузки конфигураций.");
+            _logger.LogConfigurationLoadError(ex);
             if (_settings == null) throw;
         }
     }
@@ -109,9 +110,10 @@ public class ConfigurationService : IConfigurationService
 
     private async Task TryReloadAsync()
     {
-        if (!await _reloadLock.WaitAsync(TimeSpan.Zero))
+        var locked = await _reloadLock.WaitAsync(TimeSpan.Zero);
+        if (!locked)
         {
-            _logger.LogDebug("Пропущен дублирующий reload — предыдущий ещё выполняется.");
+            _logger.LogDuplicateReloadSkipped();
             return;
         }
 

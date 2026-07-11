@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SingBoxServer.Logging;
 
 namespace SingBoxServer.Services.Subscriptions;
 
@@ -32,7 +33,7 @@ public class RemoteSubscriptionCache : IRemoteSubscriptionCache
         }
 
         // Иначе загружаем
-        _logger.LogDebug("Кэш пропущен, загружаем: {Key}", key);
+        _logger.LogCacheSkippedLoading(key);
         var value = await factory();
         
         var expiration = ttlMinutes > 0 ? now.AddMinutes(ttlMinutes) : (DateTimeOffset?)null;
@@ -44,7 +45,7 @@ public class RemoteSubscriptionCache : IRemoteSubscriptionCache
     public void Clear()
     {
         _cache.Clear();
-        _logger.LogInformation("Кэш удалённых подписок очищен.");
+        _logger.LogRemoteCacheCleared();
     }
 
     private sealed record CacheEntry(string Value, DateTimeOffset? ExpirationTime)

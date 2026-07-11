@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SingBoxServer.Core;
+using SingBoxServer.Logging;
 using SingBoxServer.Extensions;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
@@ -28,7 +29,7 @@ public partial class Program
 
             if (!hash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             {
-                logger.LogWarning("Попытка несанкционированного доступа к конфигу: {Username}", username);
+                logger.LogUnauthorizedConfigAccess(username);
                 return Results.NotFound();
             }
 
@@ -43,7 +44,7 @@ public partial class Program
 
             try
             {
-                logger.LogInformation("Генерируем конфиг на лету для юзера {Username}", username);
+                logger.LogGeneratingConfigForUser(username);
                 var finalConfig = await generator.GenerateAsync(userProfile);
 
                 // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
@@ -51,7 +52,7 @@ public partial class Program
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Критический сбой при генерации для {Username}", username);
+                logger.LogCriticalGenerationFailure(ex, username);
                 return Results.Problem("Внутренняя ошибка при генерации конфига.");
             }
         });
@@ -60,7 +61,7 @@ public partial class Program
         app.MapPost("/cache/clear", (IRemoteSubscriptionCache cache, ILogger<Program> logger) =>
         {
             cache.Clear();
-            logger.LogInformation("Кэш удаленных подписок очищен по запросу.");
+            logger.LogRemoteCacheClearedByRequest();
             return Results.Ok(new { message = "Cache cleared" });
         });
 
