@@ -50,7 +50,7 @@ internal sealed partial class Program
                 // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
                 return Results.Ok(finalConfig);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or InvalidOperationException)
             {
                 logger.LogCriticalGenerationFailure(ex, username);
                 return Results.Problem("Внутренняя ошибка при генерации конфига.");

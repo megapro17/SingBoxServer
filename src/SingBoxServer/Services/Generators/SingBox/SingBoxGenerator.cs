@@ -128,7 +128,7 @@ internal sealed partial class SingBoxGenerator(
             return [.. parsedNodes.Outbounds.Where(o => o.Type is not ("selector" or "urltest" or "direct" or "block" or "dns"))];
 
         }
-        catch
+        catch (JsonException)
         {
         }
 

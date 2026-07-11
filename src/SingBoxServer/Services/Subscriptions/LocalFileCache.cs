@@ -91,7 +91,7 @@ internal sealed class LocalFileCache : ILocalFileCache, IDisposable
             {
                 _contentCache[fullPath] = FileHelper.ReadAllTextSafe(fullPath);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 _logger.LogFailedToUpdateLocalFileInCache(ex, fullPath);
             }
