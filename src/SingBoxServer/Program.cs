@@ -24,10 +24,27 @@ internal sealed partial class Program
         app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, ILogger<Program> logger) =>
         {
             var salt = configService.Settings.BaseConfig.Salt;
-            var expectedHashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
-            var expectedHash = Convert.ToHexString(expectedHashBytes).ToLower();
 
-            if (!hash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            [Obsolete("Оставлено только для обратной совместимости старых ссылок")]
+#pragma warning disable CA5350
+            string GetLegacyHash()
+            {
+                var hashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
+                return Convert.ToHexString(hashBytes).ToLower();
+            }
+#pragma warning restore CA5350
+
+            string GetHash()
+            {
+                var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"))[..8];
+                return Convert.ToHexString(hashBytes).ToLower();
+            }
+
+            var legacyHash = GetLegacyHash();
+            var newHash = GetHash();
+
+            if (!hash.Equals(legacyHash, StringComparison.OrdinalIgnoreCase) &&
+                !hash.Equals(newHash, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogUnauthorizedConfigAccess(username);
                 return Results.NotFound();
