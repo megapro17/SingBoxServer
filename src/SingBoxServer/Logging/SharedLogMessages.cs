@@ -5,7 +5,7 @@ namespace SingBoxServer.Logging;
 // (Trace -> Debug -> Information -> Warning -> Error -> Critical)
 internal static partial class SharedLogMessages
 {
-    [LoggerMessage(Level = LogLevel.Warning, Message = "В настройках не найдено ни одного пользователя.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "В настройках не найдено ни одного пользователя")]
     public static partial void LogSettingsHasNoUsers(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Начата обработка пользователя")]
@@ -46,16 +46,16 @@ internal static partial class SharedLogMessages
     [LoggerMessage(Level = LogLevel.Error, Message = "Критический сбой при генерации для {Username}")]
     public static partial void LogCriticalGenerationFailure(this ILogger logger, Exception ex, string username);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удаленных подписок очищен по запросу.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удаленных подписок очищен по запросу")]
     public static partial void LogRemoteCacheClearedByRequest(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Конфигурации успешно загружены. Настройки: {SettingsPath}, Шаблон: {TemplatePath}")]
     public static partial void LogConfigurationsLoadedSuccessfully(this ILogger logger, string settingsPath, string templatePath);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка загрузки конфигураций.")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка загрузки конфигураций")]
     public static partial void LogConfigurationLoadError(this ILogger logger, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Пропущен дублирующий reload — предыдущий ещё выполняется.")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Пропущен дублирующий reload — предыдущий ещё выполняется")]
     public static partial void LogDuplicateReloadSkipped(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Начинаем генерацию конфига")]
@@ -73,13 +73,13 @@ internal static partial class SharedLogMessages
     [LoggerMessage(Level = LogLevel.Debug, Message = "Обновлен локальный файл в кэше: {Path}")]
     public static partial void LogLocalFileUpdatedInCache(this ILogger logger, string path);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше.")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше")]
     public static partial void LogFailedToUpdateLocalFileInCache(this ILogger logger, Exception ex, string path);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Кэш пропущен, загружаем: {Key}")]
     public static partial void LogCacheSkippedLoading(this ILogger logger, string key);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удалённых подписок очищен.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удалённых подписок очищен")]
     public static partial void LogRemoteCacheCleared(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Не удалось прочитать версию ОС из /etc/os-release")]
