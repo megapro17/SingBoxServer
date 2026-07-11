@@ -49,8 +49,8 @@ internal static partial class SharedLogMessages
     [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удаленных подписок очищен по запросу.")]
     public static partial void LogRemoteCacheClearedByRequest(this ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Конфигурации успешно загружены.")]
-    public static partial void LogConfigurationsLoadedSuccessfully(this ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Конфигурации успешно загружены. Настройки: {SettingsPath}, Шаблон: {TemplatePath}")]
+    public static partial void LogConfigurationsLoadedSuccessfully(this ILogger logger, string settingsPath, string templatePath);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка загрузки конфигураций.")]
     public static partial void LogConfigurationLoadError(this ILogger logger, Exception ex);

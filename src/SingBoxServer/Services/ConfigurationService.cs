@@ -55,7 +55,7 @@ internal sealed class ConfigurationService : IConfigurationService
             
             _settings = newSettings;
             _template = newTemplate;
-            _logger.LogConfigurationsLoadedSuccessfully();
+            _logger.LogConfigurationsLoadedSuccessfully(_paths.SettingsPath, templatePath);
             UpdateTemplateWatcher(templatePath);
         }
         catch (Exception ex)
