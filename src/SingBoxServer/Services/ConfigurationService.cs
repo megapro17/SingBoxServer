@@ -27,9 +27,8 @@ internal sealed class ConfigurationService : IConfigurationService
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
 
-    public ConfigurationService(IOptions<PlatformPath> config, JsonSerializerOptions options, ILogger<ConfigurationService> logger)
+    public ConfigurationService(IOptions<PlatformPath> config, ILogger<ConfigurationService> logger)
     {
-        //_options = options;
         _logger = logger;
         _paths = config.Value;
         LoadAll();
