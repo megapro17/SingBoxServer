@@ -18,8 +18,26 @@ internal sealed partial class SingBoxGenerator(
         var template = configService.Template;
         var servers = configService.Settings.Servers;
 
+        var expandedOutbounds = new List<string>();
+        if (user.Outbounds != null)
+        {
+            var groups = configService.Settings.OutboundGroups;
+            foreach (var ob in user.Outbounds)
+            {
+                if (groups != null && groups.TryGetValue(ob, out var groupServers))
+                {
+                    expandedOutbounds.AddRange(groupServers);
+                }
+                else
+                {
+                    expandedOutbounds.Add(ob);
+                }
+            }
+            expandedOutbounds = [.. expandedOutbounds.Distinct()];
+        }
+
         // Собираем outbounds (с учетом DPI из кастомных правил)
-        var outbounds = await BuildOutboundsAsync(user, servers, user.CustomRules).ConfigureAwait(false);
+        var outbounds = await BuildOutboundsAsync(expandedOutbounds, user, servers, user.CustomRules).ConfigureAwait(false);
 
         // Создаем глубокую копию шаблона и применяем замены
         var route = JsonPlaceholderReplacer.ProcessNode(template.Route);
@@ -44,19 +62,20 @@ internal sealed partial class SingBoxGenerator(
         };
     }
     private async Task<List<OutboundNode>> BuildOutboundsAsync(
+        List<string> expandedOutbounds,
         UserProfile user,
         Dictionary<string, ServerSource>? servers,
         RuleProfile? customRules)
     {
         ArgumentNullException.ThrowIfNull(user);
-        ArgumentNullException.ThrowIfNull(user.Outbounds);
+        ArgumentNullException.ThrowIfNull(expandedOutbounds);
 
         var finalOutbounds = new List<OutboundNode>();
         var allProxies = new List<OutboundNode>();
 
         logger.LogProcessingUser();
 
-        foreach (var outbound in user.Outbounds ?? [])
+        foreach (var outbound in expandedOutbounds)
         {
             var server = user.Servers?.GetValueOrDefault(outbound)
               ?? servers?.GetValueOrDefault(outbound);

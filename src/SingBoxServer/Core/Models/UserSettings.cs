@@ -8,7 +8,8 @@ namespace SingBoxServer.Core.Models;
 internal sealed record UserSettings(
     BaseConfig BaseConfig,
     Dictionary<string, UserProfile> Users,
-    Dictionary<string, ServerSource>? Servers = null
+    Dictionary<string, ServerSource>? Servers = null,
+    Dictionary<string, List<string>>? OutboundGroups = null
 //Dictionary<string, string> Mappings,
 //Dictionary<string, RuleProfile> RuleProfiles, // Наши шаблоны
 );

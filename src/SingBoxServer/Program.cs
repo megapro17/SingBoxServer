@@ -7,6 +7,8 @@ using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
 using SingBoxServer.Services.Generators.SingBox;
 using SingBoxServer.Services.Subscriptions;
+using Microsoft.Extensions.Options;
+using SingBoxServer.Core;
 
 namespace SingBoxServer;
 
@@ -19,6 +21,25 @@ internal sealed partial class Program
 
         var app = builder.Build();
         app.Services.GetRequiredService<IConfigurationService>();
+
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
+        bool IsAuthorized(HttpContext context, IConfiguration config)
+        {
+            var expectedToken = config["AdminToken"];
+            if (string.IsNullOrEmpty(expectedToken)) return false;
+            
+            if (!context.Request.Headers.TryGetValue("Authorization", out var authHeader)) return false;
+            var headerValue = authHeader.ToString();
+            if (!headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;
+            
+            var token = headerValue["Bearer ".Length..].Trim();
+            return CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(token), 
+                Encoding.UTF8.GetBytes(expectedToken)
+            );
+        }
 
         app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, ILogger<Program> logger) =>
         {
@@ -78,7 +99,40 @@ internal sealed partial class Program
         {
             cache.Clear();
             logger.LogRemoteCacheClearedByRequest();
-            return Results.Ok(new { message = "Cache cleared" });
+            return Results.Ok(new MessageResponse("Cache cleared"));
+        });
+
+        app.MapPost("/api/auth/verify", (HttpContext context, IConfiguration appConfig) => 
+        {
+            if (!IsAuthorized(context, appConfig)) return Results.Unauthorized();
+            return Results.Ok(new SuccessResponse(true));
+        });
+
+        app.MapGet("/api/config", async (HttpContext context, IOptions<PlatformPath> paths, IConfiguration appConfig) => 
+        {
+            if (!IsAuthorized(context, appConfig)) return Results.Unauthorized();
+            try {
+                var json = await File.ReadAllTextAsync(paths.Value.SettingsPath).ConfigureAwait(false);
+                return Results.Content(json, "application/json");
+            } catch (IOException ex) {
+                return Results.Problem("Failed to read config: " + ex.Message);
+            }
+        });
+
+        app.MapPost("/api/config", async (HttpContext context, IOptions<PlatformPath> paths, IConfiguration appConfig) => 
+        {
+            if (!IsAuthorized(context, appConfig)) return Results.Unauthorized();
+            using var reader = new StreamReader(context.Request.Body);
+            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            try {
+                JsonDocument.Parse(json); // Validate JSON
+                await File.WriteAllTextAsync(paths.Value.SettingsPath, json).ConfigureAwait(false);
+                return Results.Ok(new SuccessResponse(true));
+            } catch (JsonException) {
+                return Results.BadRequest("Invalid JSON format.");
+            } catch (IOException ex) {
+                return Results.Problem("Failed to save config: " + ex.Message);
+            }
         });
 
         app.Run();
