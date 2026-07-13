@@ -86,7 +86,8 @@ internal sealed partial class SingBoxGenerator(
                 if (string.IsNullOrWhiteSpace(rawContent)) continue;
 
                 var extracted = ExtractProxies(rawContent);
-                RenameProxies(extracted, outbound, server.Tags);
+                if(server.Tags != null)
+                    RenameProxies(extracted, outbound, server.Tags);
                 allProxies.AddRange(extracted);
             }
         }

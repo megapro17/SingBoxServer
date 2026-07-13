@@ -73,7 +73,7 @@ internal sealed record UserProfile(
 );
 
 internal sealed record ServerSource(
-    List<string> Tags,
+    List<string>? Tags,
     ServerType Type,
     ServerFormat Format,
     string Path,
