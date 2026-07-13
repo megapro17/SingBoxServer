@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 using SingBoxServer.Core;
 using SingBoxServer.Logging;
 
@@ -12,45 +13,41 @@ internal interface ILocalFileCache
     Task<string> GetContentAsync(string path, CancellationToken ct = default);
 }
 
-internal sealed class LocalFileCache : ILocalFileCache, IDisposable
+internal sealed class LocalFileCache(ILogger<LocalFileCache> logger, IOptions<PlatformPath> platformPathOptions) : ILocalFileCache, IDisposable
 {
-    private readonly ILogger<LocalFileCache> _logger;
-
+    private readonly ILogger<LocalFileCache> _logger = logger;
+    private readonly string _configDirectory = Path.GetDirectoryName(platformPathOptions.Value.SettingsPath) ?? string.Empty;
     // Кэш содержимого файлов (Путь -> Текст)
     private readonly ConcurrentDictionary<string, string> _contentCache = new();
 
     // Watcher'ы для директорий (Директория -> Watcher)
     private readonly ConcurrentDictionary<string, FileSystemWatcher> _directoryWatchers = new();
 
-    public LocalFileCache(ILogger<LocalFileCache> logger)
-    {
-        _logger = logger;
-    }
-
     public async Task<string> GetContentAsync(string path, CancellationToken ct = default)
     {
+        string absolutePath = Path.GetFullPath(Path.Combine(_configDirectory, path));
         // Если уже в кэше — возвращаем мгновенно
-        if (_contentCache.TryGetValue(path, out var cached))
+        if (_contentCache.TryGetValue(absolutePath, out var cached))
         {
             return cached;
         }
 
         // Иначе читаем с диска и ставим слежение
-        _logger.LogLocalFileLoadedFromDisk(path);
-        var content = await FileHelper.ReadAllTextSafeAsync(path, ct).ConfigureAwait(false);
-        
+        _logger.LogLocalFileLoadedFromDisk(absolutePath);
+        var content = await FileHelper.ReadAllTextSafeAsync(absolutePath, ct).ConfigureAwait(false);
+
         // Сохраняем в кэш
-        _contentCache[path] = content;
-        
+        _contentCache[absolutePath] = content;
+
         // Убеждаемся, что для директории этого файла есть Watcher
-        EnsureWatcherForDirectory(path);
-        
+        EnsureWatcherForDirectory(absolutePath);
+
         return content;
     }
 
     private void EnsureWatcherForDirectory(string filePath)
     {
-        var directory = Path.GetDirectoryName(Path.GetFullPath(filePath));
+        var directory = Path.GetDirectoryName(filePath);
         if (string.IsNullOrEmpty(directory)) return;
 
         // Если для этой директории уже есть Watcher, выходим
