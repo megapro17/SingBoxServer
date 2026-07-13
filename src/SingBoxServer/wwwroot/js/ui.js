@@ -32,9 +32,10 @@ export function createChip(text, onRemove, dndContext = null) {
     const div = document.createElement('div');
     div.className = 'chip';
     div.innerHTML = `
-        <span>${text}</span>
+        <span></span>
         <span class="remove">×</span>
     `;
+    div.querySelector('span').textContent = text;
     div.querySelector('.remove').addEventListener('click', onRemove);
 
     const span = div.querySelector('span');
@@ -146,25 +147,31 @@ export function renderServerCard(name, server, onUpdate, dictObj) {
     
     div.innerHTML = `
         <div class="card-header">
-            <h3 title="Double click to rename" style="cursor:text;">${name}</h3>
+            <h3 title="Double click to rename" style="cursor:text;"></h3>
         </div>
         <div class="form-group">
             <label>Type</label>
-            <input type="text" class="server-type" value="${server.type || ''}">
+            <input type="text" class="server-type">
         </div>
         <div class="form-group">
             <label>Format</label>
-            <input type="text" class="server-format" value="${server.format || ''}">
+            <input type="text" class="server-format">
         </div>
         <div class="form-group">
             <label>Path</label>
-            <input type="text" class="server-path" value="${server.path || ''}">
+            <input type="text" class="server-path">
         </div>
         <div class="form-group">
             <label>Tags</label>
             <div class="chips-container tags-container"></div>
         </div>
     `;
+
+    // Safely assign text and values to prevent XSS
+    div.querySelector('h3').textContent = name;
+    div.querySelector('.server-type').value = server.type || '';
+    div.querySelector('.server-format').value = server.format || '';
+    div.querySelector('.server-path').value = server.path || '';
 
     // Handle inputs
     const inputs = div.querySelectorAll('input');
@@ -234,7 +241,7 @@ export function renderUserCard(name, user, onUpdate, dictObj, salt) {
     
     div.innerHTML = `
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0; cursor:text;" title="Double click to rename">${name}</h3>
+            <h3 style="margin:0; cursor:text;" title="Double click to rename"></h3>
             <div style="display:flex; gap: 8px;">
                 <button class="btn-copy-link add-btn" style="padding:4px 8px; font-size:0.8rem; background:rgba(255,255,255,0.1);">🔗 Copy Links</button>
             </div>
@@ -244,16 +251,24 @@ export function renderUserCard(name, user, onUpdate, dictObj, salt) {
             <div class="chips-container outbounds-container"></div>
         </div>
         <div class="form-group">
-            <label>Personal Servers</label>
-            <div class="card-grid user-servers-container" style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;"></div>
-            <button class="btn-add-user-server add-btn" style="margin-top: 10px; font-size: 0.8rem; padding: 4px 8px;">+ Add Personal Server</button>
+            <details>
+                <summary style="cursor: pointer; font-weight: bold; margin-bottom: 8px; color: var(--primary-color);">Personal Servers</summary>
+                <div class="card-grid user-servers-container" style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;"></div>
+                <button class="btn-add-user-server add-btn" style="margin-top: 10px; font-size: 0.8rem; padding: 4px 8px;">+ Add Personal Server</button>
+            </details>
         </div>
         <div class="form-group">
             <label>Custom Rules (JSON)</label>
-            <textarea class="custom-rules-editor" rows="5" placeholder="Enter valid JSON...">${user.custom_rules ? JSON.stringify(user.custom_rules, null, 2) : ''}</textarea>
+            <textarea class="custom-rules-editor" rows="5" placeholder="Enter valid JSON..."></textarea>
             <div class="error-msg hidden" style="color:var(--danger-color);font-size:0.8rem;margin-top:4px;">Invalid JSON</div>
         </div>
     `;
+
+    // Safely assign properties
+    div.querySelector('h3').textContent = name;
+    if (user.custom_rules) {
+        div.querySelector('.custom-rules-editor').value = JSON.stringify(user.custom_rules, null, 2);
+    }
 
     // Render outbounds
     const outboundsContainer = div.querySelector('.outbounds-container');
@@ -376,13 +391,15 @@ export function renderGroupCard(name, groupsDict, onUpdate) {
     
     div.innerHTML = `
         <div class="card-header">
-            <h3 title="Double click to rename" style="cursor:text;">${name}</h3>
+            <h3 title="Double click to rename" style="cursor:text;"></h3>
         </div>
         <div class="form-group">
             <label>Servers in Group</label>
             <div class="chips-container servers-container"></div>
         </div>
     `;
+
+    div.querySelector('h3').textContent = name;
 
     const serversContainer = div.querySelector('.servers-container');
     const renderServers = () => {

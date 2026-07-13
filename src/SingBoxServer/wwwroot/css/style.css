@@ -18,7 +18,7 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Jost', sans-serif;
     background: var(--bg-color);
     background-image: radial-gradient(circle at top right, #1e1b4b, transparent 40%),
                       radial-gradient(circle at bottom left, #0f172a, transparent 40%);
@@ -193,7 +193,7 @@ main {
 /* Grids */
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: 1fr; /* repeat(auto-fill, minmax(350px, 1fr)); */
     gap: 20px;
     margin-bottom: 20px;
 }

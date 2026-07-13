@@ -5,8 +5,8 @@ using SingBoxServer.Services.Generators.SingBox;
 
 namespace SingBoxServer.Core;
 
-internal record SuccessResponse(bool Success);
-internal record MessageResponse(string Message);
+internal sealed record SuccessResponse(bool Success);
+internal sealed record MessageResponse(string Message);
 
 [JsonSourceGenerationOptions(
     WriteIndented = true,
