@@ -4,6 +4,7 @@ using SingBoxServer.Core;
 using SingBoxServer.Core.Models;
 using SingBoxServer.Logging;
 using SingBoxServer.Services.Generators.SingBox;
+using SingBoxServer.Services.Generators.SingBox.Patchers;
 
 namespace SingBoxServer.Services;
 
@@ -11,11 +12,13 @@ internal interface IConfigurationService : IDisposable
 {
     UserSettings Settings { get; }
     SingBoxTemplate Template { get; }
+    SingBoxTemplate GetTemplate(string? device);
 }
 
 internal sealed class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
+    private readonly IEnumerable<IConfigPatcher> _patchers;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
     private readonly PlatformPath _paths;
     private UserSettings _settings = null!;
@@ -24,15 +27,33 @@ internal sealed class ConfigurationService : IConfigurationService
     private FileSystemWatcher? _templateWatcher;
     private string? _currentTemplatePath;
     private Timer? _debounceTimer;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SingBoxTemplate> _deviceTemplates = new(StringComparer.OrdinalIgnoreCase);
+
     public UserSettings Settings => _settings;
     public SingBoxTemplate Template => _template;
 
-    public ConfigurationService(IOptions<PlatformPath> config, ILogger<ConfigurationService> logger)
+    public ConfigurationService(IOptions<PlatformPath> config, IEnumerable<IConfigPatcher> patchers, ILogger<ConfigurationService> logger)
     {
         _logger = logger;
+        _patchers = patchers;
         _paths = config.Value;
         LoadAll();
         SetupWatchers();
+    }
+
+    public SingBoxTemplate GetTemplate(string? device)
+    {
+        if (string.IsNullOrEmpty(device)) return _template;
+
+        return _deviceTemplates.GetOrAdd(device, d =>
+        {
+            var t = _template;
+            foreach (var patcher in _patchers.Where(p => p.CanPatch(d)))
+            {
+                t = patcher.ApplyPatch(t);
+            }
+            return t;
+        });
     }
 
     private void LoadAll()
@@ -55,6 +76,7 @@ internal sealed class ConfigurationService : IConfigurationService
             
             _settings = newSettings;
             _template = newTemplate;
+            _deviceTemplates.Clear(); // Очищаем кэш пропатченных шаблонов при перезагрузке файлов
             _logger.LogConfigurationsLoadedSuccessfully(_paths.SettingsPath, templatePath);
             UpdateTemplateWatcher(templatePath);
         }

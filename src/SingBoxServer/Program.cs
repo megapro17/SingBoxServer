@@ -1,14 +1,14 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
+using SingBoxServer.Core;
 using SingBoxServer.Extensions;
 using SingBoxServer.Logging;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
 using SingBoxServer.Services.Generators.SingBox;
 using SingBoxServer.Services.Subscriptions;
-using Microsoft.Extensions.Options;
-using SingBoxServer.Core;
 
 namespace SingBoxServer;
 
@@ -41,7 +41,13 @@ internal sealed partial class Program
             );
         }
 
-        app.MapGet("/configs/{hash}/{username}.json", async (string hash, string username, IConfigurationService configService, IConfigGenerator<SingBoxTemplate> generator, ILogger<Program> logger) =>
+        app.MapGet("/configs/{hash}/{username}.json", async (
+            string hash, 
+            string username, 
+            string? device,
+            IConfigurationService configService, 
+            IConfigGenerator<SingBoxTemplate> generator, 
+            ILogger<Program> logger) =>
         {
             var salt = configService.Settings.BaseConfig.Salt;
 
@@ -82,7 +88,7 @@ internal sealed partial class Program
             try
             {
                 logger.LogGeneratingConfigForUser(username);
-                var finalConfig = await generator.GenerateAsync(userProfile).ConfigureAwait(false);
+                var finalConfig = await generator.GenerateAsync(userProfile, device).ConfigureAwait(false);
 
                 // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
                 return Results.Ok(finalConfig);

@@ -11,11 +11,11 @@ internal sealed partial class SingBoxGenerator(
     ISubscriptionLoader loader,
     IConfigurationService configService) : IConfigGenerator<SingBoxTemplate>
 {
-    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user)
+    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, string? device = null)
     {
         logger.LogStartingConfigGeneration();
 
-        var template = configService.Template;
+        var template = configService.GetTemplate(device);
         var servers = configService.Settings.Servers;
 
         var expandedOutbounds = new List<string>();

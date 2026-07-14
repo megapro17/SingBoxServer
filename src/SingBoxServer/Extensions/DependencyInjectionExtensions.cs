@@ -2,6 +2,7 @@ using SingBoxServer.Core;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
 using SingBoxServer.Services.Generators.SingBox;
+using SingBoxServer.Services.Generators.SingBox.Patchers;
 using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer.Extensions;
@@ -34,6 +35,7 @@ internal static class DependencyInjectionExtensions
 
         services.AddHttpClient<ISubscriptionLoader, SubscriptionLoader>();
         services.AddTransient<IConfigGenerator<SingBoxTemplate>, SingBoxGenerator>();
+        services.AddSingleton<IConfigPatcher, WindowsConfigPatcher>();
         return services;
     }
 }
