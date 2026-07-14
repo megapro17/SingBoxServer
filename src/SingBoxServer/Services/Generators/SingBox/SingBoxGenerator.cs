@@ -86,7 +86,7 @@ internal sealed partial class SingBoxGenerator(
                 if (string.IsNullOrWhiteSpace(rawContent)) continue;
 
                 var extracted = ExtractProxies(rawContent);
-                if(server.Tags != null)
+                if (server.Tags != null)
                     RenameProxies(extracted, outbound, server.Tags);
                 allProxies.AddRange(extracted);
             }
@@ -120,7 +120,11 @@ internal sealed partial class SingBoxGenerator(
                 Type = "selector",
                 Tag = Constants.ProxySelector,
                 OutboundsTags = proxyTags,
-                DefaultTag = proxyTags.FirstOrDefault()
+                DefaultTag = proxyTags.FirstOrDefault(),
+                ExtensionData = new Dictionary<string, JsonElement>
+                {
+                    { "interrupt_exist_connections", JsonDocument.Parse("true").RootElement }
+                }
             };
 
             finalOutbounds.Add(selector);
