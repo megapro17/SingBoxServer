@@ -39,17 +39,18 @@ internal sealed partial class SingBoxGenerator(
         // Собираем outbounds (с учетом DPI из кастомных правил)
         var outbounds = await BuildOutboundsAsync(expandedOutbounds, user, servers, user.CustomRules).ConfigureAwait(false);
 
-        // Создаем глубокую копию шаблона и применяем замены
-        var route = JsonPlaceholderReplacer.ProcessNode(template.Route);
-        var dns = JsonPlaceholderReplacer.ProcessNode(template.Dns);
-        var httpclients = JsonPlaceholderReplacer.ProcessNode(template.HttpClients);
-
-        // Применяем кастомные правила пользователя
+        var routeNode = template.Route;
+        var dnsNode = template.Dns;
+        
         if (user.CustomRules is { } customRules)
         {
-            route = SingBoxRuleInjector.InjectRouteRules(route, customRules.Route, customRules.Hijack);
-            dns = SingBoxRuleInjector.InjectDnsRules(dns, customRules.Dns);
+            routeNode = SingBoxRuleInjector.InjectRouteRules(routeNode, customRules.Route, customRules.Hijack);
+            dnsNode = SingBoxRuleInjector.InjectDnsRules(dnsNode, customRules.Dns);
         }
+
+        var route = JsonPlaceholderReplacer.ProcessNode(routeNode);
+        var dns = JsonPlaceholderReplacer.ProcessNode(dnsNode);
+        var httpclients = JsonPlaceholderReplacer.ProcessNode(template.HttpClients);
 
         return template with
         {

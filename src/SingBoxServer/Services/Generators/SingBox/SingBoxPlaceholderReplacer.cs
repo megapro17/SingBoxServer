@@ -28,7 +28,9 @@ internal static class JsonPlaceholderReplacer
                     if (currentVal == Constants.ProxyOut)
                         obj[prop.Key] = JsonValue.Create(Constants.ProxySelector);
                     else if (currentVal == Constants.ProxyOutDirect)
-                        obj[prop.Key] = JsonValue.Create(Constants.ProxyDirect);
+                        obj[prop.Key] = JsonValue.Create(Constants.ProxyDirect);                    
+                    else if (currentVal == Constants.ProxyOutDpi)
+                        obj[prop.Key] = JsonValue.Create(Constants.ProxyDpi);
                     else
                         ReplacePlaceholders(prop.Value);
                 }

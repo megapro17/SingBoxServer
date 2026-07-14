@@ -9,5 +9,6 @@ static class Constants
     public const string ProxyDpi = "✂️ DPI";
     public const string ProxyOut = "proxy_out";
     public const string ProxyOutDirect = "direct_out";
+    public const string ProxyOutDpi = "socks_dpi";
     public const string ProxyUnknown = "Unknown";
 }
