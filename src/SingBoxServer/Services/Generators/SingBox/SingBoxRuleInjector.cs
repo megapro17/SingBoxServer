@@ -23,13 +23,13 @@ internal static class SingBoxRuleInjector
         // Вставляем правила (в обратном порядке, чтобы сохранить порядок)
         for (int i = customRules.Count - 1; i >= 0; i--)
         {
-            rules.Insert(insertIndex, customRules[i]!);
+            rules.Insert(insertIndex, customRules[i]!.DeepClone());
         }
 
         // Применяем hijack (заменяем первое правило)
         if (hijack is not null && rules.Count > 0)
         {
-            rules[0] = hijack;
+            rules[0] = hijack.DeepClone();
         }
 
         return routeObj;
@@ -80,7 +80,7 @@ internal static class SingBoxRuleInjector
         // Вставляем в начало (в обратном порядке)
         for (int i = customRules.Count - 1; i >= 0; i--)
         {
-            rules.Insert(0, customRules[i]!);
+            rules.Insert(0, customRules[i]!.DeepClone());
         }
 
         return dnsObj;

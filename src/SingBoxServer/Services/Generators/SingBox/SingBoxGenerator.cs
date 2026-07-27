@@ -57,9 +57,9 @@ internal sealed partial class SingBoxGenerator(
             Outbounds = outbounds,
             Route = route,
             Dns = dns,
-            Experimental = user.CustomRules?.Experimental ?? template.Experimental,
+            Experimental = user.CustomRules?.Experimental?.DeepClone() ?? template.Experimental,
             HttpClients = httpclients,
-            Inbounds = user.CustomRules?.Inbounds ?? template.Inbounds
+            Inbounds = user.CustomRules?.Inbounds?.DeepClone().AsArray() ?? template.Inbounds
         };
     }
     private async Task<List<OutboundNode>> BuildOutboundsAsync(
