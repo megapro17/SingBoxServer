@@ -15,6 +15,7 @@ internal static class DependencyInjectionExtensions
         services.ConfigureHttpJsonOptions(options =>
         {
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default);
+            options.SerializerOptions.WriteIndented = true;
         });
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();

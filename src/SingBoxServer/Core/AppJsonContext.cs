@@ -9,10 +9,8 @@ internal sealed record SuccessResponse(bool Success);
 internal sealed record MessageResponse(string Message);
 
 [JsonSourceGenerationOptions(
-    WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    // Вот эта магия заменит удаленный JsonStringEnumConverter:
     UseStringEnumConverter = true
 )]
 [JsonSerializable(typeof(UserSettings))]
