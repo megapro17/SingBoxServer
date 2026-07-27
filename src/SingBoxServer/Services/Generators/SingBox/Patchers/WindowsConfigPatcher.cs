@@ -12,7 +12,7 @@ internal sealed class WindowsConfigPatcher : IConfigPatcher
     public SingBoxTemplate ApplyPatch(SingBoxTemplate config)
     {
         // 1. Клонируем Inbounds, чтобы не трогать глобальный шаблон
-        var inbounds = config.Inbounds?.DeepClone().AsArray();
+        var inbounds = config.Inbounds?.AsArray();
         if (inbounds != null)
         {
             foreach (var inbound in inbounds)
@@ -27,7 +27,7 @@ internal sealed class WindowsConfigPatcher : IConfigPatcher
         }
 
         // 2. Клонируем Experimental (или создаем новый, если его не было)
-        var experimental = config.Experimental?.DeepClone().AsObject() ?? new JsonObject();
+        var experimental = config.Experimental?.AsObject() ?? [];
         
         if (!experimental.ContainsKey("clash_api"))
         {

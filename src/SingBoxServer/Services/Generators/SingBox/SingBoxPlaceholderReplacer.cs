@@ -9,11 +9,8 @@ internal static class JsonPlaceholderReplacer
     public static JsonNode? ProcessNode(JsonNode? node)
     {
         if (node == null) return null;
-
-        // Создаем глубокую копию, чтобы не менять исходный шаблон
-        var clone = node.DeepClone();
-        ReplacePlaceholders(clone);
-        return clone;
+        ReplacePlaceholders(node);
+        return node;
     }
 
     public static void ReplacePlaceholders(JsonNode? node)

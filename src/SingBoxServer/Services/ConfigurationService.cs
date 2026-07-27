@@ -40,22 +40,27 @@ internal sealed class ConfigurationService : IConfigurationService
         LoadAll();
         SetupWatchers();
     }
-
     public SingBoxTemplate GetTemplate(string? device)
     {
-        if (string.IsNullOrEmpty(device)) return _template;
-
-        return _deviceTemplates.GetOrAdd(device, d =>
-        {
-            var t = _template;
-            foreach (var patcher in _patchers.Where(p => p.CanPatch(d)))
+        var template = string.IsNullOrEmpty(device)
+            ? _template
+            : _deviceTemplates.GetOrAdd(device, d =>
             {
-                t = patcher.ApplyPatch(t);
-            }
-            return t;
-        });
+                var t = _template;
+                foreach (var patcher in _patchers.Where(p => p.CanPatch(d)))
+                {
+                    t = patcher.ApplyPatch(t);
+                }
+                return t;
+            });
+        return CloneTemplate(template);
     }
 
+    private static SingBoxTemplate CloneTemplate(SingBoxTemplate template)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(template, AppJsonContext.Default.SingBoxTemplate);
+        return JsonSerializer.Deserialize(bytes, AppJsonContext.Default.SingBoxTemplate)!;
+    }
     private void LoadAll()
     {
         try
@@ -69,11 +74,11 @@ internal sealed class ConfigurationService : IConfigurationService
             {
                 templatePath = Path.Combine(Path.GetDirectoryName(_paths.SettingsPath)!, templatePath);
             }
-            
+
             var templateInput = FileHelper.ReadAllTextSafe(templatePath);
             var newTemplate = JsonSerializer.Deserialize(templateInput, AppJsonContext.Default.SingBoxTemplate)
                 ?? throw new InvalidOperationException($"Не удалось десериализовать {templateInput} — результат null.");
-            
+
             _settings = newSettings;
             _template = newTemplate;
             _deviceTemplates.Clear(); // Очищаем кэш пропатченных шаблонов при перезагрузке файлов
