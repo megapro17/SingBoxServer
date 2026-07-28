@@ -90,7 +90,6 @@ internal sealed partial class Program
                 logger.LogGeneratingConfigForUser(username);
                 var finalConfig = await generator.GenerateAsync(userProfile, device).ConfigureAwait(false);
 
-                // Теперь фреймворк сам найдет инструкции для сериализации в глобальных настройках
                 return Results.Ok(finalConfig);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or InvalidOperationException)

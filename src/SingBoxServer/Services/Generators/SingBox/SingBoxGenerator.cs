@@ -87,8 +87,14 @@ internal sealed partial class SingBoxGenerator(
                 if (string.IsNullOrWhiteSpace(rawContent)) continue;
 
                 var extracted = ExtractProxies(rawContent);
-                if (server.Tags != null)
+                if (server.Tags != null && server.Tags.Count > 0)
+                {
                     RenameProxies(extracted, outbound, server.Tags);
+                }
+                else
+                {
+                    AutoFormatProxies(extracted, outbound);
+                }
                 allProxies.AddRange(extracted);
             }
         }
@@ -209,6 +215,98 @@ internal sealed partial class SingBoxGenerator(
             {
                 node.Tag = serverName;
             }
+        }
+    }
+
+    // Matches exactly two Regional Indicator Symbols (A-Z), which form a standard country flag emoji.
+    private static readonly System.Text.RegularExpressions.Regex _emojiRegex = new(@"(?:\uD83C[\uDDE6-\uDDFF]){2}", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static void AutoFormatProxies(List<OutboundNode> proxies, string name)
+    {
+        var counters = new Dictionary<string, int>();
+
+        foreach (var node in proxies)
+        {
+            string emoji = "🌐";
+            if (!string.IsNullOrWhiteSpace(node.Tag))
+            {
+                var match = _emojiRegex.Match(node.Tag);
+                if (match.Success)
+                {
+                    emoji = match.Value;
+                }
+            }
+
+            if (emoji == "🌐")
+            {
+                emoji = GetFallbackEmoji(node);
+            }
+
+            if (!counters.TryGetValue(emoji, out int count))
+            {
+                count = 0;
+            }
+            count++;
+            counters[emoji] = count;
+            
+            node.Tag = $"{emoji} {name} {count:D2}";
+        }
+    }
+
+    private static string GetFallbackEmoji(OutboundNode node)
+    {
+        string host = string.Empty;
+        if (node.ExtensionData != null && node.ExtensionData.TryGetValue("server", out var serverElement) && serverElement.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            host = serverElement.GetString() ?? string.Empty;
+        }
+        
+        var textsToSearch = new[] { node.Tag ?? string.Empty, host };
+        
+        foreach (var text in textsToSearch)
+        {
+            if (string.IsNullOrWhiteSpace(text)) continue;
+            var lower = text.ToLowerInvariant();
+            
+            // 1. Ищем мост: bridge-ru-fi
+            var bridgeMatch = System.Text.RegularExpressions.Regex.Match(lower, @"bridge-([a-z]{2})-([a-z]{2})");
+            if (bridgeMatch.Success)
+                return $"{GetFlagEmoji(bridgeMatch.Groups[1].Value)} → {GetFlagEmoji(bridgeMatch.Groups[2].Value)}";
+            
+            // 2. Ищем обычный сервер: de-fra-02
+            var match2 = System.Text.RegularExpressions.Regex.Match(lower, @"(?:^|_|-)([a-z]{2})-[a-z]+");
+            if (match2.Success)
+                return GetFlagEmoji(match2.Groups[1].Value);
+                
+            // 3. Ищем формат: fi10.samovargate.com
+            var match1 = System.Text.RegularExpressions.Regex.Match(lower, @"^([a-z]{2})[a-z]*\d+");
+            if (match1.Success)
+            {
+                var code = match1.Groups[1].Value;
+                if (code is not ("ap" or "cd" or "ww" or "ns"))
+                    return GetFlagEmoji(code);
+            }
+        }
+        
+        return "🌐";
+    }
+
+    private static string GetFlagEmoji(string countryCode)
+    {
+        if (string.IsNullOrWhiteSpace(countryCode) || countryCode.Length < 2)
+            return "🌐";
+
+        var code = countryCode.ToUpperInvariant();
+        if (code == "UK") return "🇬🇧";
+        if (code == "SW") return "🇸🇪";
+        
+        try 
+        {
+            return char.ConvertFromUtf32(code[0] + 127397) + char.ConvertFromUtf32(code[1] + 127397);
+        }
+        catch
+        {
+            return "🌐";
         }
     }
 }
