@@ -19,6 +19,7 @@ internal sealed record MessageResponse(string Message);
 [JsonSerializable(typeof(ProblemDetails))]
 [JsonSerializable(typeof(SuccessResponse))]
 [JsonSerializable(typeof(MessageResponse))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 internal sealed partial class AppJsonContext : JsonSerializerContext
 {
 }

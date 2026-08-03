@@ -20,6 +20,7 @@ internal static class DependencyInjectionExtensions
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();
         services.AddSingleton<ILocalFileCache, LocalFileCache>();
+        services.AddSingleton<PlatformPath.Setup>();
         services.ConfigureOptions<PlatformPath.Setup>();
 
         services.AddLogging(builder =>

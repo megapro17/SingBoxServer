@@ -11,8 +11,7 @@ namespace SingBoxServer.Services;
 internal interface IConfigurationService : IDisposable
 {
     UserSettings Settings { get; }
-    SingBoxTemplate Template { get; }
-    SingBoxTemplate GetTemplate(string? device);
+    SingBoxTemplate GetTemplate(string? templateName, string? device);
 }
 
 internal sealed class ConfigurationService : IConfigurationService
@@ -21,39 +20,67 @@ internal sealed class ConfigurationService : IConfigurationService
     private readonly IEnumerable<IConfigPatcher> _patchers;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
     private readonly PlatformPath _paths;
+    private readonly PlatformPath.Setup _pathSetup;
     private UserSettings _settings = null!;
-    private SingBoxTemplate _template = null!;
     private FileSystemWatcher? _settingsWatcher;
     private FileSystemWatcher? _templateWatcher;
-    private string? _currentTemplatePath;
     private Timer? _debounceTimer;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SingBoxTemplate> _deviceTemplates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SingBoxTemplate> _templateCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Path, string Device), SingBoxTemplate> _deviceTemplates = new();
 
     public UserSettings Settings => _settings;
-    public SingBoxTemplate Template => _template;
 
-    public ConfigurationService(IOptions<PlatformPath> config, IEnumerable<IConfigPatcher> patchers, ILogger<ConfigurationService> logger)
+    public ConfigurationService(IOptions<PlatformPath> config, PlatformPath.Setup pathSetup, IEnumerable<IConfigPatcher> patchers, ILogger<ConfigurationService> logger)
     {
         _logger = logger;
         _patchers = patchers;
         _paths = config.Value;
+        _pathSetup = pathSetup;
         LoadAll();
         SetupWatchers();
     }
-    public SingBoxTemplate GetTemplate(string? device)
+    public SingBoxTemplate GetTemplate(string? templateName, string? device)
     {
-        var template = string.IsNullOrEmpty(device)
-            ? _template
-            : _deviceTemplates.GetOrAdd(device, d =>
+        string key = string.IsNullOrEmpty(templateName) ? "default" : templateName;
+        
+        if (!_settings.BaseConfig.Path.TryGetValue(key, out var targetFileName))
+        {
+            if (key == "default")
             {
-                var t = _template;
-                foreach (var patcher in _patchers.Where(p => p.CanPatch(d)))
-                {
-                    t = patcher.ApplyPatch(t);
-                }
-                return t;
-            });
-        return CloneTemplate(template);
+                targetFileName = "template.json";
+            }
+            else
+            {
+                throw new FileNotFoundException($"Шаблон '{key}' не разрешён. Добавьте его в словарь base_config.path.");
+            }
+        }
+
+        string configDir = Path.GetDirectoryName(_paths.SettingsPath) ?? string.Empty;
+        string fullPath = PlatformPath.Setup.MakeAbsolute(targetFileName, configDir, targetFileName);
+
+        var template = _templateCache.GetOrAdd(fullPath, path => 
+        {
+            var input = FileHelper.ReadAllTextSafe(path);
+            return JsonSerializer.Deserialize(input, AppJsonContext.Default.SingBoxTemplate)
+                   ?? throw new InvalidOperationException($"Не удалось десериализовать {path}");
+        });
+
+        if (string.IsNullOrEmpty(device))
+        {
+            return CloneTemplate(template);
+        }
+
+        var deviceTemplate = _deviceTemplates.GetOrAdd((fullPath, device), key =>
+        {
+            var t = template;
+            foreach (var patcher in _patchers.Where(p => p.CanPatch(key.Device)))
+            {
+                t = patcher.ApplyPatch(t);
+            }
+            return t;
+        });
+
+        return CloneTemplate(deviceTemplate);
     }
 
     private static SingBoxTemplate CloneTemplate(SingBoxTemplate template)
@@ -69,21 +96,13 @@ internal sealed class ConfigurationService : IConfigurationService
             var newSettings = JsonSerializer.Deserialize(settingsInput, AppJsonContext.Default.UserSettings)
                 ?? throw new InvalidOperationException($"Ошибка десериализации {_paths.SettingsPath}");
 
-            string templatePath = newSettings.BaseConfig.Path ?? "template.json"; // Проверить на существование файла
-            if (!Path.IsPathRooted(templatePath))
-            {
-                templatePath = Path.Combine(Path.GetDirectoryName(_paths.SettingsPath)!, templatePath);
-            }
-
-            var templateInput = FileHelper.ReadAllTextSafe(templatePath);
-            var newTemplate = JsonSerializer.Deserialize(templateInput, AppJsonContext.Default.SingBoxTemplate)
-                ?? throw new InvalidOperationException($"Не удалось десериализовать {templateInput} — результат null.");
-
             _settings = newSettings;
-            _template = newTemplate;
-            _deviceTemplates.Clear(); // Очищаем кэш пропатченных шаблонов при перезагрузке файлов
-            _logger.LogConfigurationsLoadedSuccessfully(_paths.SettingsPath, templatePath);
-            UpdateTemplateWatcher(templatePath);
+            _templateCache.Clear();
+            _deviceTemplates.Clear();
+
+            string displayPath = string.Join(", ", _settings.BaseConfig.Path.Values);
+            _logger.LogConfigurationsLoadedSuccessfully(_paths.SettingsPath, displayPath);
+            UpdateTemplateWatcher();
         }
         catch (Exception ex)
         {
@@ -110,27 +129,21 @@ internal sealed class ConfigurationService : IConfigurationService
             _settingsWatcher.Renamed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
         }
     }
-    private void UpdateTemplateWatcher(string currentTemplatePath)
+    private void UpdateTemplateWatcher()
     {
-        if (_currentTemplatePath == currentTemplatePath && _templateWatcher != null)
-            return; // Путь не изменился, ничего не делаем
-
-        _currentTemplatePath = currentTemplatePath;
-
-        // Если путь к шаблону изменился, старый вочер удаляем, новый создаем
-        _templateWatcher?.Dispose();
-
-        var dir = Path.GetDirectoryName(currentTemplatePath);
+        if (_templateWatcher != null) return;
+        
+        var dir = Path.GetDirectoryName(_paths.SettingsPath);
         if (dir != null && Directory.Exists(dir))
         {
             _templateWatcher = new FileSystemWatcher(dir)
             {
-                Filter = Path.GetFileName(currentTemplatePath),
+                Filter = "*.json",
                 EnableRaisingEvents = true
             };
-            _templateWatcher.Changed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
-            _templateWatcher.Created += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
-            _templateWatcher.Renamed += (s, e) => _debounceTimer?.Change(500, Timeout.Infinite);
+            _templateWatcher.Changed += (s, e) => { if (e.FullPath != _paths.SettingsPath) _debounceTimer?.Change(500, Timeout.Infinite); };
+            _templateWatcher.Created += (s, e) => { if (e.FullPath != _paths.SettingsPath) _debounceTimer?.Change(500, Timeout.Infinite); };
+            _templateWatcher.Renamed += (s, e) => { if (e.FullPath != _paths.SettingsPath) _debounceTimer?.Change(500, Timeout.Infinite); };
         }
     }
 

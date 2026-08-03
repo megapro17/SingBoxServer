@@ -4,5 +4,5 @@ namespace SingBoxServer.Services.Generators;
 
 internal interface IConfigGenerator<T>
 {
-    Task<T> GenerateAsync(UserProfile user, string? device = null);
+    Task<T> GenerateAsync(UserProfile user, string? device = null, string? template = null);
 }

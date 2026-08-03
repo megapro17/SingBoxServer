@@ -45,6 +45,7 @@ internal sealed partial class Program
             string hash, 
             string username, 
             string? device,
+            string? template,
             IConfigurationService configService, 
             IConfigGenerator<SingBoxTemplate> generator, 
             ILogger<Program> logger) =>
@@ -88,7 +89,8 @@ internal sealed partial class Program
             try
             {
                 logger.LogGeneratingConfigForUser(username);
-                var finalConfig = await generator.GenerateAsync(userProfile, device).ConfigureAwait(false);
+                var effectiveTemplate = template ?? userProfile.Profile;
+                var finalConfig = await generator.GenerateAsync(userProfile, device, effectiveTemplate).ConfigureAwait(false);
 
                 return Results.Ok(finalConfig);
             }

@@ -68,11 +68,13 @@ internal sealed class PlatformPath
             return false;
         }
 
-        private static string MakeAbsolute(string? userPath, string defaultDir, string defaultFileName)
+        public static string MakeAbsolute(string? userPath, string defaultDir, string defaultFileName)
         {
             string path = string.IsNullOrWhiteSpace(userPath)
                 ? Path.Combine(defaultDir, defaultFileName)
-                : userPath;
+                : Path.IsPathRooted(userPath)
+                    ? userPath
+                    : Path.Combine(defaultDir, userPath);
 
             return Path.GetFullPath(path);
         }

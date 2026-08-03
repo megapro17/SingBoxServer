@@ -11,11 +11,11 @@ internal sealed partial class SingBoxGenerator(
     ISubscriptionLoader loader,
     IConfigurationService configService) : IConfigGenerator<SingBoxTemplate>
 {
-    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, string? device = null)
+    public async Task<SingBoxTemplate> GenerateAsync(UserProfile user, string? device = null, string? template = null)
     {
         logger.LogStartingConfigGeneration();
 
-        var template = configService.GetTemplate(device);
+        var resolvedTemplate = configService.GetTemplate(template, device);
         var servers = configService.Settings.Servers;
 
         var expandedOutbounds = new List<string>();
@@ -39,9 +39,9 @@ internal sealed partial class SingBoxGenerator(
         // Собираем outbounds (с учетом DPI из кастомных правил)
         var outbounds = await BuildOutboundsAsync(expandedOutbounds, user, servers, user.CustomRules).ConfigureAwait(false);
 
-        var routeNode = template.Route;
-        var dnsNode = template.Dns;
-        
+        var routeNode = resolvedTemplate.Route;
+        var dnsNode = resolvedTemplate.Dns;
+
         if (user.CustomRules is { } customRules)
         {
             routeNode = SingBoxRuleInjector.InjectRouteRules(routeNode, customRules.Route, customRules.Hijack);
@@ -50,16 +50,16 @@ internal sealed partial class SingBoxGenerator(
 
         var route = JsonPlaceholderReplacer.ProcessNode(routeNode);
         var dns = JsonPlaceholderReplacer.ProcessNode(dnsNode);
-        var httpclients = JsonPlaceholderReplacer.ProcessNode(template.HttpClients);
+        var httpclients = JsonPlaceholderReplacer.ProcessNode(resolvedTemplate.HttpClients);
 
-        return template with
+        return resolvedTemplate with
         {
             Outbounds = outbounds,
             Route = route,
             Dns = dns,
-            Experimental = user.CustomRules?.Experimental?.DeepClone() ?? template.Experimental,
+            Experimental = user.CustomRules?.Experimental?.DeepClone() ?? resolvedTemplate.Experimental,
             HttpClients = httpclients,
-            Inbounds = user.CustomRules?.Inbounds?.DeepClone().AsArray() ?? template.Inbounds
+            Inbounds = user.CustomRules?.Inbounds?.DeepClone().AsArray() ?? resolvedTemplate.Inbounds
         };
     }
     private async Task<List<OutboundNode>> BuildOutboundsAsync(
@@ -220,7 +220,6 @@ internal sealed partial class SingBoxGenerator(
 
     // Matches exactly two Regional Indicator Symbols (A-Z), which form a standard country flag emoji.
     private static readonly System.Text.RegularExpressions.Regex _emojiRegex = new(@"(?:\uD83C[\uDDE6-\uDDFF]){2}", System.Text.RegularExpressions.RegexOptions.Compiled);
-
     private static void AutoFormatProxies(List<OutboundNode> proxies, string name)
     {
         var counters = new Dictionary<string, int>();
@@ -230,10 +229,13 @@ internal sealed partial class SingBoxGenerator(
             string emoji = "🌐";
             if (!string.IsNullOrWhiteSpace(node.Tag))
             {
-                var match = _emojiRegex.Match(node.Tag);
-                if (match.Success)
+                // Используем Matches для поиска ВСЕХ флагов в строке
+                var matches = _emojiRegex.Matches(node.Tag);
+                if (matches.Count > 0)
                 {
-                    emoji = match.Value;
+                    // Собираем все найденные флаги и соединяем их стрелочкой
+                    var flags = matches.Cast<System.Text.RegularExpressions.Match>().Select(m => m.Value);
+                    emoji = string.Join(" → ", flags);
                 }
             }
 
@@ -242,17 +244,17 @@ internal sealed partial class SingBoxGenerator(
                 emoji = GetFallbackEmoji(node);
             }
 
+            // Счетчик теперь будет считать разные цепочки отдельно (например, 🇷🇺 и 🇷🇺 → 🇫🇮 будут считаться раздельно)
             if (!counters.TryGetValue(emoji, out int count))
             {
                 count = 0;
             }
             count++;
             counters[emoji] = count;
-            
+
             node.Tag = $"{emoji} {name} {count:D2}";
         }
     }
-
     private static string GetFallbackEmoji(OutboundNode node)
     {
         string host = string.Empty;
@@ -260,24 +262,24 @@ internal sealed partial class SingBoxGenerator(
         {
             host = serverElement.GetString() ?? string.Empty;
         }
-        
+
         var textsToSearch = new[] { node.Tag ?? string.Empty, host };
-        
+
         foreach (var text in textsToSearch)
         {
             if (string.IsNullOrWhiteSpace(text)) continue;
             var lower = text.ToLowerInvariant();
-            
+
             // 1. Ищем мост: bridge-ru-fi
             var bridgeMatch = System.Text.RegularExpressions.Regex.Match(lower, @"bridge-([a-z]{2})-([a-z]{2})");
             if (bridgeMatch.Success)
                 return $"{GetFlagEmoji(bridgeMatch.Groups[1].Value)} → {GetFlagEmoji(bridgeMatch.Groups[2].Value)}";
-            
+
             // 2. Ищем обычный сервер: de-fra-02
             var match2 = System.Text.RegularExpressions.Regex.Match(lower, @"(?:^|_|-)([a-z]{2})-[a-z]+");
             if (match2.Success)
                 return GetFlagEmoji(match2.Groups[1].Value);
-                
+
             // 3. Ищем формат: fi10.samovargate.com
             var match1 = System.Text.RegularExpressions.Regex.Match(lower, @"^([a-z]{2})[a-z]*\d+");
             if (match1.Success)
@@ -287,7 +289,7 @@ internal sealed partial class SingBoxGenerator(
                     return GetFlagEmoji(code);
             }
         }
-        
+
         return "🌐";
     }
 
@@ -299,14 +301,13 @@ internal sealed partial class SingBoxGenerator(
         var code = countryCode.ToUpperInvariant();
         if (code == "UK") return "🇬🇧";
         if (code == "SW") return "🇸🇪";
-        
-        try 
+
+        if (code[0] >= 'A' && code[0] <= 'Z' &&
+                code[1] >= 'A' && code[1] <= 'Z')
         {
             return char.ConvertFromUtf32(code[0] + 127397) + char.ConvertFromUtf32(code[1] + 127397);
         }
-        catch
-        {
-            return "🌐";
-        }
+
+        return "🌐";
     }
 }

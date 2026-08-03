@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SingBoxServer.Core.Models.Enums;
@@ -14,7 +15,39 @@ internal sealed record UserSettings(
 //Dictionary<string, RuleProfile> RuleProfiles, // Наши шаблоны
 );
 
-internal sealed record BaseConfig(string Salt, string Type, string Path);
+internal sealed record BaseConfig(string Salt, string Type, TemplatePaths Path);
+
+[JsonConverter(typeof(TemplatePathsConverter))]
+internal sealed class TemplatePaths : Dictionary<string, string>
+{
+    public TemplatePaths() : base(StringComparer.OrdinalIgnoreCase) { }
+    public TemplatePaths(IDictionary<string, string> dictionary) : base(dictionary, StringComparer.OrdinalIgnoreCase) { }
+}
+
+internal sealed class TemplatePathsConverter : JsonConverter<TemplatePaths>
+{
+    public override TemplatePaths Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var singlePath = reader.GetString();
+            return new TemplatePaths { ["default"] = singlePath ?? "template.json" };
+        }
+
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            var dict = JsonSerializer.Deserialize(ref reader, AppJsonContext.Default.DictionaryStringString);
+            return dict != null ? new TemplatePaths(dict) : new TemplatePaths();
+        }
+
+        throw new JsonException("Ожидалась строка или объект для base_config.path");
+    }
+
+    public override void Write(Utf8JsonWriter writer, TemplatePaths value, JsonSerializerOptions options)
+    {
+        JsonSerializer.Serialize(writer, (IDictionary<string, string>)value, AppJsonContext.Default.DictionaryStringString);
+    }
+}
 
 /// <summary>
 /// Кастомные правила пользователя для инъекции в шаблон sing-box.
@@ -66,7 +99,7 @@ internal sealed record RuleProfile
 // Профиль пользователя
 internal sealed record UserProfile(
     bool UseSharedServers = true,
-    string? Profile = "standard", // Имя шаблона
+    string? Profile = null, // Имя шаблона
     RuleProfile? CustomRules = null,
     Dictionary<string, ServerSource>? Servers = null,
     List<string>? Outbounds = null
