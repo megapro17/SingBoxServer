@@ -23,17 +23,9 @@ internal static partial class SharedLogMessages
     [LoggerMessage(Level = LogLevel.Debug, Message = "Сервер: {ServerName} ({Type} {Format}) - {ServerUrl}")]
     public static partial void LogServerInfo(this ILogger logger, string ServerName, ServerType Type, ServerFormat Format, string serverUrl);
 
-    // 1. Для удаленных подписок
-    [LoggerMessage(Level = LogLevel.Information, Message = "Скачивание подписки: {ServerName} (URL: {Url})")]
-    public static partial void LogDownloadingSubscription(this ILogger logger, string serverName, string url);
-
     // 2. Для локальных файлов (то, что ты просил вынести)
     [LoggerMessage(Level = LogLevel.Information, Message = "Чтение локального конфига: {Url}")]
     public static partial void LogLoadingLocalConfig(this ILogger logger, string url);
-
-    // 3. Общая ошибка скачивания (с передачей Exception)
-    [LoggerMessage(Level = LogLevel.Error, Message = "Ошибка при загрузке данных из {Url}")]
-    public static partial void LogDownloadError(this ILogger logger, string url, Exception ex);
 
     // --- Автоматически сгенерированные при переносе ---
 
@@ -45,9 +37,6 @@ internal static partial class SharedLogMessages
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Критический сбой при генерации для {Username}")]
     public static partial void LogCriticalGenerationFailure(this ILogger logger, Exception ex, string username);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удаленных подписок очищен по запросу")]
-    public static partial void LogRemoteCacheClearedByRequest(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Конфигурации успешно загружены. Настройки: {SettingsPath}, Шаблон: {TemplatePath}")]
     public static partial void LogConfigurationsLoadedSuccessfully(this ILogger logger, string settingsPath, string templatePath);
@@ -75,12 +64,6 @@ internal static partial class SharedLogMessages
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Не удалось обновить локальный файл {Path} после нескольких попыток. Оставляем старую версию в кэше")]
     public static partial void LogFailedToUpdateLocalFileInCache(this ILogger logger, Exception ex, string path);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Кэш пропущен, загружаем: {Key}")]
-    public static partial void LogCacheSkippedLoading(this ILogger logger, string key);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Кэш удалённых подписок очищен")]
-    public static partial void LogRemoteCacheCleared(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Не удалось прочитать версию ОС из /etc/os-release")]
     public static partial void LogFailedToReadOsRelease(this ILogger logger, Exception ex);

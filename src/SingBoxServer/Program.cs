@@ -8,7 +8,6 @@ using SingBoxServer.Logging;
 using SingBoxServer.Services;
 using SingBoxServer.Services.Generators;
 using SingBoxServer.Services.Generators.SingBox;
-using SingBoxServer.Services.Subscriptions;
 
 namespace SingBoxServer;
 
@@ -94,19 +93,11 @@ internal sealed partial class Program
 
                 return Results.Ok(finalConfig);
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or InvalidOperationException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
                 logger.LogCriticalGenerationFailure(ex, username);
                 return Results.Problem("Внутренняя ошибка при генерации конфига.");
             }
-        });
-
-        // Очистка кэша удаленных подписок (локальные файлы трогать не нужно, они следят за диском)
-        app.MapPost("/cache/clear", (IRemoteSubscriptionCache cache, ILogger<Program> logger) =>
-        {
-            cache.Clear();
-            logger.LogRemoteCacheClearedByRequest();
-            return Results.Ok(new MessageResponse("Cache cleared"));
         });
 
         app.MapPost("/api/auth/verify", (HttpContext context, IConfiguration appConfig) => 

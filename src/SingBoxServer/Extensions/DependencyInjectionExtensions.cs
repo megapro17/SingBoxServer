@@ -18,7 +18,6 @@ internal static class DependencyInjectionExtensions
             options.SerializerOptions.WriteIndented = true;
         });
         services.AddSingleton<IConfigurationService, ConfigurationService>();
-        services.AddSingleton<IRemoteSubscriptionCache, RemoteSubscriptionCache>();
         services.AddSingleton<ILocalFileCache, LocalFileCache>();
         services.AddSingleton<PlatformPath.Setup>();
         services.ConfigureOptions<PlatformPath.Setup>();
@@ -35,7 +34,7 @@ internal static class DependencyInjectionExtensions
             builder.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
         });
 
-        services.AddHttpClient<ISubscriptionLoader, SubscriptionLoader>();
+        services.AddSingleton<ISubscriptionLoader, SubscriptionLoader>();
         services.AddTransient<IConfigGenerator<SingBoxTemplate>, SingBoxGenerator>();
         services.AddSingleton<IConfigPatcher, WindowsConfigPatcher>();
         return services;

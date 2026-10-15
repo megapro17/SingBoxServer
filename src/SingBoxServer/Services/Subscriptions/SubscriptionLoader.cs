@@ -1,15 +1,10 @@
 using System.Text;
 using SingBoxServer.Core.Models;
 using SingBoxServer.Core.Models.Enums;
-using SingBoxServer.Logging;
 
 namespace SingBoxServer.Services.Subscriptions;
 
-internal sealed class SubscriptionLoader(
-    HttpClient httpClient,
-    ILogger<SubscriptionLoader> logger,
-    IRemoteSubscriptionCache remoteCache,
-    ILocalFileCache localFileCache) : ISubscriptionLoader
+internal sealed class SubscriptionLoader(ILocalFileCache localFileCache) : ISubscriptionLoader
 {
     public async Task<string> LoadContentAsync(ServerSource server, CancellationToken ct = default)
     {
@@ -17,7 +12,6 @@ internal sealed class SubscriptionLoader(
         string rawContent = server.Type switch
         {
             ServerType.Local => await localFileCache.GetContentAsync(server.Path, ct).ConfigureAwait(false),
-            ServerType.Remote => await DownloadRemoteFileAsync(server, ct).ConfigureAwait(false),
             ServerType.Inline => server.Path,
             _ => throw new NotSupportedException($"Тип источника {server.Type} не поддерживается")
         };
@@ -31,17 +25,6 @@ internal sealed class SubscriptionLoader(
             _ => throw new NotSupportedException($"Формат данных {server.Format} не поддерживается")
         };
     }
-    private async Task<string> DownloadRemoteFileAsync(ServerSource server, CancellationToken ct)
-    {
-        // Определяем TTL: по умолчанию 5 минут, если 0 — бесконечно
-        var ttlMinutes = server.CacheTtl ?? 5;
-
-        return await remoteCache.GetOrCreateAsync(server.Path, async () =>
-        {
-            logger.LogDownloadingSubscription("name", server.Path);
-            return await httpClient.GetStringAsync(new Uri(server.Path), ct).ConfigureAwait(false) ?? throw new InvalidOperationException("Пустой ответ от сервера");
-        }, ttlMinutes).ConfigureAwait(false);
-    }
 
     private static string DecodeV2rayBase64(string base64String)
     {
@@ -51,19 +34,5 @@ internal sealed class SubscriptionLoader(
         base64String = base64String.Trim();
         byte[] data = Convert.FromBase64String(base64String);
         return Encoding.UTF8.GetString(data);
-    }
-    private async Task<string> ReadLocalFileAsync(ServerSource server, CancellationToken ct)
-    {
-        // Используем кэш с FileSystemWatcher (читает диск только при первом запросе или изменении)
-        return await localFileCache.GetContentAsync(server.Path, ct).ConfigureAwait(false);
-    }
-
-    private async Task<string> ReadLocalV2rayAsync(ServerSource server, CancellationToken ct)
-    {
-        var base64String = await ReadLocalFileAsync(server, ct).ConfigureAwait(false);
-        base64String = base64String.Trim();
-        byte[] data = Convert.FromBase64String(base64String);
-        string decodedString = Encoding.UTF8.GetString(data);
-        return decodedString;
     }
 }

@@ -6,7 +6,6 @@ using SingBoxServer.Services.Generators.SingBox;
 namespace SingBoxServer.Core;
 
 internal sealed record SuccessResponse(bool Success);
-internal sealed record MessageResponse(string Message);
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
@@ -18,7 +17,6 @@ internal sealed record MessageResponse(string Message);
 [JsonSerializable(typeof(OutboundNode))]
 [JsonSerializable(typeof(ProblemDetails))]
 [JsonSerializable(typeof(SuccessResponse))]
-[JsonSerializable(typeof(MessageResponse))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 internal sealed partial class AppJsonContext : JsonSerializerContext
 {

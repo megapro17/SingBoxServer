@@ -318,7 +318,7 @@ export function renderUserCard(name, user, onUpdate, dictObj, salt) {
         const sName = prompt("Enter personal server name:");
         if (sName) {
             if (!user.servers) user.servers = {};
-            user.servers[sName] = { type: "remote", format: "singbox", path: "", tags: [] };
+            user.servers[sName] = { type: "local", format: "singbox", path: "", tags: [] };
             renderUserServers();
             onUpdate();
         }
