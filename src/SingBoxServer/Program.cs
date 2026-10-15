@@ -51,26 +51,10 @@ internal sealed partial class Program
         {
             var salt = configService.Settings.BaseConfig.Salt;
 
-            [Obsolete("Оставлено только для обратной совместимости старых ссылок")]
-#pragma warning disable CA5350
-            string GetLegacyHash()
-            {
-                var hashBytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"));
-                return Convert.ToHexString(hashBytes).ToLower();
-            }
-#pragma warning restore CA5350
+            var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"))[..8];
+            var expectedHash = Convert.ToHexString(hashBytes).ToLower();
 
-            string GetHash()
-            {
-                var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{username}.{salt}"))[..8];
-                return Convert.ToHexString(hashBytes).ToLower();
-            }
-
-            var legacyHash = GetLegacyHash();
-            var newHash = GetHash();
-
-            if (!hash.Equals(legacyHash, StringComparison.OrdinalIgnoreCase) &&
-                !hash.Equals(newHash, StringComparison.OrdinalIgnoreCase))
+            if (!hash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogUnauthorizedConfigAccess(username);
                 return Results.NotFound();

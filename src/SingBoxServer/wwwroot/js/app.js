@@ -145,15 +145,11 @@ function render() {
                 const encoder = new TextEncoder();
                 const data = encoder.encode(`${name}.${salt}`);
 
-                const sha1Buffer = await crypto.subtle.digest('SHA-1', data);
-                const legacyHash = Array.from(new Uint8Array(sha1Buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
                 const sha256Buffer = await crypto.subtle.digest('SHA-256', data);
                 const newHash = Array.from(new Uint8Array(sha256Buffer)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
 
                 output += `=== User: ${name} ===\n`;
-                output += `${baseUrl}/configs/${newHash}/${name}.json\n`;
-                output += `${baseUrl}/configs/${legacyHash}/${name}.json\n\n`;
+                output += `${baseUrl}/configs/${newHash}/${name}.json\n\n`;
             }
             linksTextarea.value = output.trim();
         };
